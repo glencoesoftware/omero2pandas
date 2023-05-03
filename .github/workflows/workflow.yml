@@ -1,0 +1,40 @@
+# https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Build
+on:
+  push:
+  pull_request:
+
+jobs:
+
+  test:
+    name: Test
+    strategy:
+      # Keep running so we can see if other tests pass
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.8'
+          - '3.9'
+          - '3.10'
+        os:
+          - ubuntu-20.04
+        include:
+          - python-version: '3.8'
+            os: macos-latest
+          - python-version: '3.8'
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: python -mpip install -U wheel flake8 virtualenv
+      - name: Run tests
+        run: |
+            git fetch --prune --unshallow --tags --force
+            git describe
+            flake8
+            python setup.py build
