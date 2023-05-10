@@ -9,6 +9,7 @@
 import atexit
 import getpass
 import logging
+import weakref
 
 import omero
 from omero.gateway import BlitzGateway
@@ -46,7 +47,7 @@ class OMEROConnection:
         if allow_token and self.need_connection_details():
             self.get_user_token()
         # Make sure that session closer runs on interpreter exit.
-        atexit.register(self.shutdown)
+        atexit.register(weakref.ref(self.shutdown))
 
     def __getattr__(self, attr):
         # Forward function calls to the client object, if one exists.
