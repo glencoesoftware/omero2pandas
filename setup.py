@@ -52,6 +52,9 @@ setup(
         'pandas',
         'tqdm',
     ],
+    extras_require={
+            "token": ["omero-user-token>=0.3.0"],
+        },
     setup_requires=['pytest-runner', 'flake8'],
     tests_require=['pytest', 'flake8'],
     zip_safe=True,
