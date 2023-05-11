@@ -120,7 +120,7 @@ class OMEROConnection:
             try:
                 self.client.joinSession(self.session_key)
             except Exception as e:
-                print(f"Failed to join session: {e}")
+                print(f"Failed to join session, token may have expired: {e}")
                 self.client = None
                 return False
         elif self.username is not None:
@@ -236,7 +236,7 @@ class OMEROConnection:
             try:
                 import omero_user_token
                 LOGGER.info("Requesting token info")
-                token = omero_user_token.getter()
+                token = omero_user_token.get_token()
                 self.server, port = token[token.find('@') + 1:].split(':')
                 self.port = int(port)
                 self.session_key = token[:token.find('@')]
@@ -244,6 +244,8 @@ class OMEROConnection:
                             f" {self.server}:{self.port}")
             except ImportError:
                 LOGGER.info("omero_user_token not installed")
+            except AttributeError:
+                LOGGER.warning("Please update omero-user-token to >=0.3.0")
             except Exception:
                 LOGGER.error("Failed to process user token", exc_info=True)
         else:
