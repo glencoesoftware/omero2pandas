@@ -278,7 +278,7 @@ def detect_jupyter():
         if importlib.util.find_spec("ipywidgets") is None:
             LOGGER.warning(
                 "Detected Jupyter environment but no ipywidgets, "
-                "cannot show interactive login dialog.")
+                "cannot show interactive login widget.")
             return False
         LOGGER.debug("Detected Jupyter environment")
         return True
