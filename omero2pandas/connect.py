@@ -9,11 +9,14 @@
 import atexit
 import getpass
 import logging
+import weakref
 
 import omero
 from omero.gateway import BlitzGateway
 
 LOGGER = logging.getLogger(__name__)
+
+ACTIVE_CONNECTORS = weakref.WeakSet()
 
 
 class OMEROConnection:
@@ -46,7 +49,7 @@ class OMEROConnection:
         if allow_token and self.need_connection_details():
             self.get_user_token()
         # Make sure that session closer runs on interpreter exit.
-        atexit.register(self.shutdown)
+        ACTIVE_CONNECTORS.add(self)
 
     def __getattr__(self, attr):
         # Forward function calls to the client object, if one exists.
@@ -272,3 +275,12 @@ def detect_jupyter():
         LOGGER.debug("Detected Jupyter environment")
         return True
     return False
+
+
+def cleanup_sessions():
+    # Shut down any active sessions when exiting Python
+    for connector in ACTIVE_CONNECTORS:
+        connector.shutdown()
+
+
+atexit.register(cleanup_sessions)
