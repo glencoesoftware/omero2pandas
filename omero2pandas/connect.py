@@ -241,6 +241,8 @@ class OMEROConnection:
                             f" {self.server}:{self.port}")
             except ImportError:
                 LOGGER.info("omero_user_token not installed")
+            except AttributeError:
+                LOGGER.warning("Please update omero-user-token to >=0.3.0")
             except Exception:
                 LOGGER.error("Failed to process user token", exc_info=True)
         else:
