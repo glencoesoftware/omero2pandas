@@ -280,8 +280,7 @@ def detect_jupyter():
                 "Detected Jupyter environment but no ipywidgets, "
                 "cannot show interactive login dialog.")
             return False
-        else:
-            LOGGER.debug("Detected Jupyter environment")
+        LOGGER.debug("Detected Jupyter environment")
         return True
     return False
 
