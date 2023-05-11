@@ -8,6 +8,7 @@
 # support@glencoesoftware.com.
 import atexit
 import getpass
+import importlib.util
 import logging
 import weakref
 
@@ -274,7 +275,13 @@ def detect_jupyter():
         return False
     shell = get_ipython().__class__.__name__
     if shell == 'ZMQInteractiveShell':
-        LOGGER.debug("Detected Jupyter environment")
+        if importlib.util.find_spec("ipywidgets") is None:
+            LOGGER.warning(
+                "Detected Jupyter environment but no ipywidgets, "
+                "cannot show interactive login dialog.")
+            return False
+        else:
+            LOGGER.debug("Detected Jupyter environment")
         return True
     return False
 
