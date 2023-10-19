@@ -311,6 +311,11 @@ def _get_table(conn, object_type, object_id):
     else:
         raise NotImplementedError(
             f"OMERO object of type {type(target)} is not supported")
+
+    # Check that the OriginalFile has the expected mimetype
+    if orig_file.mimetype.val != "OMERO.tables":
+        raise ValueError(f"File {orig_file.id.val} is not a valid OMERO.tables")
+
     # Load the table
     resources = conn.c.sf.sharedResources()
     data_table = resources.openTable(orig_file, _ctx=conn.SERVICE_OPTS)
