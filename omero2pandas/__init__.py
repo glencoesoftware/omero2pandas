@@ -313,7 +313,7 @@ def _get_table(conn, object_type, object_id):
             f"OMERO object of type {type(target)} is not supported")
 
     # Check that the OriginalFile has the expected mimetype
-    if orig_file.mimetype.val != "OMERO.tables":
+    if orig_file.mimetype is None or orig_file.mimetype.val != "OMERO.tables":
         raise ValueError(
             f"File {orig_file.id.val} is not a valid OMERO.tables")
 
