@@ -148,7 +148,7 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
             rows = data_table.getWhereList(condition=query,
                                            variables=variables,
                                            start=0, stop=-1, step=1)
-            num_rows=len(rows)
+            num_rows = len(rows)
         elif rows is None:
             num_rows = data_table.getNumberOfRows()
         else:
@@ -282,7 +282,7 @@ def download_table(target_path, file_id=None, annotation_id=None,
             rows = data_table.getWhereList(condition=query,
                                            variables=variables,
                                            start=0, stop=-1, step=1)
-            num_rows=len(rows)
+            num_rows = len(rows)
         elif rows is None:
             num_rows = data_table.getNumberOfRows()
         else:
