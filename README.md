@@ -124,7 +124,7 @@ provide credentials, a token or a connection object.
 To upload data, the user needs to specify which OMERO object the table
 will be associated with. To do this, the third and fourth arguments 
 should be the object ID and object type. Supported objects are Dataset, 
-Well, Plate and Image.
+Well, Plate, Project, Screen and Image.
 
 ```python
 import pandas

@@ -39,6 +39,8 @@ LINK_TYPES = {
     "Image": omero.model.ImageAnnotationLinkI,
     "Dataset": omero.model.DatasetAnnotationLinkI,
     "Plate": omero.model.PlateAnnotationLinkI,
+    "Project": omero.model.ProjectAnnotationLinkI,
+    "Screen": omero.model.ScreenAnnotationLinkI,
     "Well": omero.model.WellAnnotationLinkI,
 }
 
@@ -46,6 +48,8 @@ OBJECT_TYPES = {
     "Image": omero.model.ImageI,
     "Dataset": omero.model.DatasetI,
     "Plate": omero.model.PlateI,
+    "Project": omero.model.ProjectI,
+    "Screen": omero.model.ScreenI,
     "Well": omero.model.WellI,
 }
 
