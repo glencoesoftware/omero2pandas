@@ -89,7 +89,7 @@ def get_table_columns(file_id=None, annotation_id=None,
 
 def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
                chunk_size=1000, omero_connector=None, server=None, port=4064,
-               username=None, password=None):
+               username=None, password=None, query=None, variables=None):
     """
     Gets table data from the server.
     Supply either a file or annotation ID.
@@ -110,8 +110,16 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
     Default None = load all rows.
     :param column_names: Iterable of column name strings to load.
     Default None = load all columns.
+    :param query: String containing the PyTables query which would return a
+    subset of rows from the table. Only rows which pass this query will be
+    returned. Cannot be used with the 'rows' parameter.
+    :param variables: Dictionary containing variables to map onto the query
+    string.
     :return: pandas.DataFrame object containing requested data
     """
+    if rows is not None and query is not None:
+        raise ValueError("Running a query supersedes the rows argument. "
+                         "Please only supply one.")
     object_id, object_type = _validate_requested_object(
         file_id=file_id, annotation_id=annotation_id)
 
@@ -134,7 +142,14 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
         else:
             target_cols = range(len(heads))
         # Determine requested rows
-        if rows is None:
+        if query is not None:
+            if variables is None:
+                variables = {}
+            rows = data_table.getWhereList(condition=query,
+                                           variables=variables,
+                                           start=0, stop=-1, step=1)
+            num_rows = len(rows)
+        elif rows is None:
             num_rows = data_table.getNumberOfRows()
         else:
             rows = list(rows)
@@ -203,7 +218,7 @@ def upload_table(dataframe, table_name, parent_id, parent_type='Image',
 def download_table(target_path, file_id=None, annotation_id=None,
                    column_names=(), rows=None, chunk_size=1000,
                    omero_connector=None, server=None, port=4064,
-                   username=None, password=None):
+                   username=None, password=None, query=None, variables=None):
     """
     Downloads table data into a CSV file.
     Supply either a file or annotation ID.
@@ -225,8 +240,16 @@ def download_table(target_path, file_id=None, annotation_id=None,
     Default None = load all rows.
     :param column_names: Iterable of column name strings to load.
     Default None = load all columns.
+    :param query: String containing the PyTables query which would return a
+    subset of rows from the table. Only rows which pass this query will be
+    returned. Cannot be used with the 'rows' parameter.
+    :param variables: Dictionary containing variables to map onto the query
+    string.
     :return: pandas.DataFrame object containing requested data
     """
+    if rows is not None and query is not None:
+        raise ValueError("Running a query supersedes the rows argument. "
+                         "Please only supply one.")
     object_id, object_type = _validate_requested_object(
         file_id=file_id, annotation_id=annotation_id)
 
@@ -253,7 +276,14 @@ def download_table(target_path, file_id=None, annotation_id=None,
         else:
             target_cols = range(len(heads))
         # Determine requested rows
-        if rows is None:
+        if query is not None:
+            if variables is None:
+                variables = {}
+            rows = data_table.getWhereList(condition=query,
+                                           variables=variables,
+                                           start=0, stop=-1, step=1)
+            num_rows = len(rows)
+        elif rows is None:
             num_rows = data_table.getNumberOfRows()
         else:
             rows = list(rows)

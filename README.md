@@ -165,3 +165,36 @@ with omero2pandas.OMEROConnection(server='my.server', port=4064,
 ```
 
 The context manager will handle session creation and cleanup automatically.
+
+### Querying tables
+
+You can also supply [PyTables condition syntax](https://www.pytables.org/usersguide/condition_syntax.html) to the `read_table` and `download_table` functions.
+Returned tables will only include rows which pass this filter.
+
+**Basic syntax**
+Select rows representing objects with area greater than 20:
+```python
+omero2pandas.read_table(file_id=10, query='(area>20)')
+```
+
+**Multiple conditions**
+
+Select rows representing objects with an even ID number lower than 50:
+```python
+omero2pandas.read_table(file_id=10, query='(id%2==0) & (id<50)')
+```
+
+**Complex conditions** 
+
+Select rows representing objects which originated from an ROI named 'Nucleus':
+```python
+omero2pandas.read_table(file_id=10, query='x!="Nucleus"', variables={'x': omero.rtypes.rstring('Roi Name')})
+```
+
+N.b. Column names containing spaces aren't supported by the native syntax, but can be supplied as variables which are provided by the `variables` parameter.
+
+The variables map needs to be a dictionary mapping string variables to [OMERO rtypes](https://omero.readthedocs.io/en/v5.6.9/developers/GettingStarted/AdvancedClientDevelopment.html#rtypes) objects rather than raw Python objects. 
+These should match the relevant column type. Mapped variables are substituted into the query during processing.
+
+A `variables` map usually isn't needed for simple queries. The basic condition string should automatically get converted to a meaningful type, but when this fails 
+replacing tricky elements with a variable may help.
