@@ -39,6 +39,7 @@ class OMEROConnection:
         trying to use credentials. Default True.
         """
         self.client = client
+        self.external_client = client is not None
         self.session = None
         self.gateway = None
         self.temp_session = False
@@ -85,7 +86,8 @@ class OMEROConnection:
 
     def __del__(self):
         # Make sure we close sessions on deletion.
-        self.shutdown()
+        if not self.external_client:
+            self.shutdown()
 
     @property
     def connected(self):
