@@ -172,6 +172,7 @@ You can also supply [PyTables condition syntax](https://www.pytables.org/usersgu
 Returned tables will only include rows which pass this filter.
 
 **Basic syntax**
+
 Select rows representing objects with area greater than 20:
 ```python
 omero2pandas.read_table(file_id=10, query='(area>20)')
