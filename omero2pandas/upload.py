@@ -69,7 +69,9 @@ def generate_omero_columns(df):
             max_len = df[column_name].str.len().max()
             if math.isnan(max_len):
                 max_len = 1
-            col = col_class(cleaned_name, "", max_len, [])
+            col = col_class(cleaned_name, "", int(max_len), [])
+            # Coerce missing values into strings
+            df[column_name].fillna('', inplace=True)
         else:
             col = col_class(cleaned_name, "", [])
         omero_columns.append(col)
@@ -85,6 +87,7 @@ def create_table(df, table_name, parent_id, parent_type, conn, chunk_size):
         raise ValueError(f"{parent_type} ID {parent_id} not found")
     parent_group = parent_ob.details.group.id.val
 
+    df = df.copy()
     orig_columns = df.columns.tolist()
     columns = generate_omero_columns(df)
     resources = conn.c.sf.sharedResources(_ctx={
