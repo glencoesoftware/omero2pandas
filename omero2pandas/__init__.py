@@ -202,7 +202,7 @@ def upload_table(dataframe, table_name, parent_id, parent_type='Image',
     :param port: Port the server runs on (default 4064)
     :param username: Username for server login
     :param password: Password for server login
-    :return: File annotation ID of the new table
+    :return: File Annotation ID of the new table
     """
     with OMEROConnection(server=server, username=username, password=password,
                          port=port, client=omero_connector) as connector:

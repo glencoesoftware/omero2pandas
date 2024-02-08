@@ -129,13 +129,13 @@ def create_table(df, table_name, parent_id, parent_type, conn, chunk_size):
         annotation.file = orig_file
 
         link_obj.link(target_obj, annotation)
-        conn.getUpdateService().saveObject(link_obj, _ctx={
-            "omero.group": str(parent_group)})
+        link_obj = conn.getUpdateService().saveAndReturnObject(
+            link_obj, _ctx={"omero.group": str(parent_group)})
         LOGGER.info("Saved annotation link")
 
         LOGGER.info(f"Finished creating table {table_name} under "
                     f"{parent_type} {parent_id}")
-        return orig_file.id.val
+        return link_obj.child.id.val
     finally:
         if table is not None:
             table.close()
