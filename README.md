@@ -82,7 +82,7 @@ Otherwise a CLI interface will be provided.
 
 This behaviour can be disabled by supplying `interactive=False` to the connect call.
 
-### Reading data
+## Reading data
 
 Several utility methods are provided for working with OMERO.tables. These all support the full range of connection modes.
 
@@ -113,7 +113,7 @@ my_dataframe.head()
 
 Returned dataframes also come with a pandas index column, representing the original row numbers from the OMERO.table.
 
-### Writing data
+## Writing data
 
 Pandas dataframes can also be written back as new OMERO.tables.
 N.b. It is currently not possible to modify a table on the server.
@@ -136,6 +136,42 @@ ann_id = omero2pandas.upload_table(my_data, "Name for table", 142, "Image")
 
 Once uploaded, the table will be accessible on OMERO.web under the file 
 annotations panel of the parent object. Using unique table names is advised.
+
+### Large Tables
+The first argument to `upload_table` can be a pandas dataframe or a path to a 
+.csv file containing the table data. In the latter case the table will be read 
+in chunks corresponding to the `chunk_size` argument. This will allow you to 
+upload tables which are too large to load into system memory.
+
+```python
+import omero2pandas
+ann_id = omero2pandas.upload_table("/path/to/my.csv", "My table", 
+                                   142, chunk_size=100)
+# Reads and uploads the file to Image 142, loading 100 lines at a time 
+```
+
+
+### Linking to additional objects
+
+Each table gets linked to a parent object determined by the `parent_id` and
+`parent_id` parameters. This becomes the main parent that the table is 
+associated with in OMERO. You can also supply the `extra_links` parameter to 
+provide extra objects to link the table to. This should be a list of 
+tuples in the format `(<target_type>, <target_id>)`.
+
+
+```python
+import omero2pandas
+ann_id = omero2pandas.upload_table(
+    "/path/to/my.csv", "My table", 142,
+    extra_links=[("Image", 101), ("Dataset", 2), ("Roi", 1923)])
+# Uploads with additional links to Image 101, Dataset 2 and ROI 1923 
+```
+
+Extra links allow OMERO.web to display the resulting table as 
+an annotation associated with multiple objects.
+
+
 
 # Advanced Usage
 

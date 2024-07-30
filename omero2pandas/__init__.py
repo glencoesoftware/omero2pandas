@@ -182,19 +182,21 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
     return df
 
 
-def upload_table(dataframe, table_name, parent_id, parent_type='Image',
-                 chunk_size=1000, omero_connector=None, server=None,
-                 port=4064, username=None, password=None):
+def upload_table(source, table_name, parent_id, parent_type='Image',
+                 extra_links=(), chunk_size=1000, omero_connector=None,
+                 server=None, port=4064, username=None, password=None):
     """
     Upload a pandas dataframe to a new OMERO table.
     For the connection, supply either an active client object or server
     credentials (not both!). If neither are provided the program will search
     for an OMERO user token on the system.
-    :param dataframe: Pandas dataframe to upload to OMERO
+    :param source: Pandas dataframe or CSV file path to upload to OMERO
     :param table_name: Name for the table on OMERO
     :param parent_id: Object ID to attach the table to as an annotation.
     :param parent_type: Object type to attach to.
     One of: Image, Dataset, Plate, Well
+    :param extra_links: List of (Type, ID) tuples specifying extra objects to
+    link the table to.
     :param chunk_size: Rows to transmit to the server in a single operation
     :param omero_connector: OMERO.client object which is already connected
     to a server. Supersedes any other connection details.
@@ -208,8 +210,8 @@ def upload_table(dataframe, table_name, parent_id, parent_type='Image',
                          port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
         conn.SERVICE_OPTS.setOmeroGroup('-1')
-        ann_id = create_table(dataframe, table_name, parent_id, parent_type,
-                              conn, chunk_size)
+        ann_id = create_table(source, table_name, parent_id, parent_type,
+                              conn, chunk_size, extra_links)
         if ann_id is None:
             LOGGER.warning("Failed to create OMERO table")
         return ann_id
