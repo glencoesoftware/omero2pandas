@@ -183,7 +183,7 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
 
 
 def upload_table(source, table_name, parent_id, parent_type='Image',
-                 extra_links=(), chunk_size=1000, omero_connector=None,
+                 extra_links=(), chunk_size=None, omero_connector=None,
                  server=None, port=4064, username=None, password=None):
     """
     Upload a pandas dataframe to a new OMERO table.
@@ -197,7 +197,8 @@ def upload_table(source, table_name, parent_id, parent_type='Image',
     One of: Image, Dataset, Plate, Well
     :param extra_links: List of (Type, ID) tuples specifying extra objects to
     link the table to.
-    :param chunk_size: Rows to transmit to the server in a single operation
+    :param chunk_size: Rows to transmit to the server in a single operation.
+    Default: Automatically choose a size
     :param omero_connector: OMERO.client object which is already connected
     to a server. Supersedes any other connection details.
     :param server: Address of the server
