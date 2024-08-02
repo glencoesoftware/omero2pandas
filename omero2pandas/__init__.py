@@ -352,7 +352,7 @@ def _get_table(conn, object_type, object_id):
 
     # Load the table
     resources = conn.c.sf.sharedResources()
-    data_table = resources.openTable(orig_file, _ctx=conn.SERVICE_OPTS)
+    data_table = resources.openTable(orig_file, conn.SERVICE_OPTS)
     conn.SERVICE_OPTS.setOmeroGroup(orig_group)
     return data_table
 

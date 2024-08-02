@@ -192,14 +192,13 @@ def create_table(source, table_name, parent_id, parent_type, conn, chunk_size,
         iter_data = (source.iloc[i:i + chunk_size]
                      for i in range(0, len(source), chunk_size))
 
-    resources = conn.c.sf.sharedResources(_ctx={
-        "omero.group": str(parent_group)})
+    resources = conn.c.sf.sharedResources({"omero.group": str(parent_group)})
     repository_id = resources.repositories().descriptions[0].getId().getValue()
 
     table = None
     try:
-        table = resources.newTable(repository_id, table_name, _ctx={
-            "omero.group": str(parent_group)})
+        table = resources.newTable(repository_id, table_name,
+                                   {"omero.group": str(parent_group)})
         table.initialize(columns)
         progress_monitor.reset(total=total_rows)
         progress_monitor.set_description("Uploading table to OMERO")
@@ -210,7 +209,7 @@ def create_table(source, table_name, parent_id, parent_type, conn, chunk_size,
                 chunk.loc[:, str_cols] = chunk.loc[:, str_cols].fillna('')
             for omero_column, (name, col_data) in zip(columns, chunk.items()):
                 if omero_column.name != name:
-                    LOGGER.debug("Matching", omero_column.name, name)
+                    LOGGER.debug(f"Matching {omero_column.name} -> {name}")
                 omero_column.values = col_data.tolist()
             table.addData(columns)
             progress_monitor.update(len(chunk))
@@ -229,7 +228,7 @@ def create_table(source, table_name, parent_id, parent_type, conn, chunk_size,
 
         link_obj.link(target_obj, annotation)
         link_obj = conn.getUpdateService().saveAndReturnObject(
-            link_obj, _ctx={"omero.group": str(parent_group)})
+            link_obj, {"omero.group": str(parent_group)})
         annotation_id = link_obj.child.id.val
         LOGGER.info(f"Uploaded as FileAnnotation {annotation_id}")
         extra_link_objs = []
@@ -243,10 +242,10 @@ def create_table(source, table_name, parent_id, parent_type, conn, chunk_size,
         if extra_link_objs:
             try:
                 conn.getUpdateService().saveArray(
-                    extra_link_objs, _ctx={"omero.group": str(parent_group)})
+                    extra_link_objs, {"omero.group": str(parent_group)})
                 LOGGER.info(f"Added links to {len(extra_link_objs)} objects")
-            except Exception as e:
-                LOGGER.error("Failed to create extra links", exc_info=e)
+            except Exception:
+                LOGGER.error("Failed to create extra links", exc_info=True)
         LOGGER.info(f"Finished creating table {table_name} under "
                     f"{parent_type} {parent_id}")
         return annotation_id
