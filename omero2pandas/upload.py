@@ -9,7 +9,6 @@
 import logging
 import math
 import os
-from typing import Iterable
 
 import omero
 import omero.grid
@@ -138,38 +137,33 @@ def generate_omero_columns_csv(csv_path, chunk_size=1000):
     return omero_columns, to_resolve.keys(), row_count, chunk_size
 
 
-def create_table(source, table_name, parent_id, parent_type, conn, chunk_size,
-                 extra_links):
+def create_table(source, table_name, links, conn, chunk_size):
     # Create an OMERO.table and upload data
     # Make type case-insensitive
-    parent_type = parent_type.lower().capitalize()
-    if parent_type not in OBJECT_TYPES:
-        raise NotImplementedError(f"Type {parent_type} not "
-                                  f"supported as a parent object")
-    elif parent_type == "Roi":
-        LOGGER.warning("ROI selected as the primary attachment target, "
-                       "resulting table may not be shown in OMERO.web UI.")
-    parent_ob = conn.getObject(parent_type, parent_id)
-    if parent_ob is None:
-        raise ValueError(f"{parent_type} ID {parent_id} not found")
-    parent_group = parent_ob.details.group.id.val
-    if extra_links is not None and not isinstance(extra_links, Iterable):
-        raise ValueError(f"Extra Links should be an iterable list of "
-                         f"type/id pairs, not {extra_links}")
-    link_to = []
-    for ob_type, ob_id in extra_links:
-        ob_type = ob_type.lower().capitalize()
-        if ob_type not in OBJECT_TYPES:
-            raise NotImplementedError(f"Type {ob_type} not "
+    links = [(t.lower().capitalize(), i) for t, i in links]
+    # Validate link list
+    working_group = None
+    roi_only = True
+    for target_type, target_id in links:
+        if target_type not in OBJECT_TYPES:
+            raise NotImplementedError(f"Type {target_type} not "
                                       f"supported as a link target")
-        if isinstance(ob_id, str):
-            assert ob_id.isdigit(), f"Object ID {ob_id} is not numeric"
-            ob_id = int(ob_id)
-        link_ob = conn.getObject(ob_type, ob_id)
-        if link_ob is None:
-            LOGGER.warning(f"{ob_type} ID {ob_id} not found, won't link")
-            continue
-        link_to.append((ob_type, ob_id))
+        if target_type != "Roi":
+            roi_only = False
+        target_ob = conn.getObject(target_type, target_id)
+        if target_ob is None:
+            raise ValueError(f"{target_type} #{target_id} not found")
+        target_group = target_ob.details.group.id.val
+        if working_group is None:
+            working_group = target_group
+        else:
+            if working_group != target_group:
+                raise ValueError("All objects being linked to must belong to "
+                                 "the same OMERO group")
+    if roi_only:
+        LOGGER.warning("Only ROIs have been selected to link the table to. "
+                       "Resulting table may not be shown in the OMERO.web UI.")
+    conn.SERVICE_OPTS.setOmeroGroup(working_group)
 
     progress_monitor = tqdm(
         desc="Inspecting table...", initial=1, dynamic_ncols=True,
@@ -192,13 +186,13 @@ def create_table(source, table_name, parent_id, parent_type, conn, chunk_size,
         iter_data = (source.iloc[i:i + chunk_size]
                      for i in range(0, len(source), chunk_size))
 
-    resources = conn.c.sf.sharedResources({"omero.group": str(parent_group)})
+    resources = conn.c.sf.sharedResources({"omero.group": str(working_group)})
     repository_id = resources.repositories().descriptions[0].getId().getValue()
 
     table = None
     try:
         table = resources.newTable(repository_id, table_name,
-                                   {"omero.group": str(parent_group)})
+                                   {"omero.group": str(working_group)})
         table.initialize(columns)
         progress_monitor.reset(total=total_rows)
         progress_monitor.set_description("Uploading table to OMERO")
@@ -217,38 +211,28 @@ def create_table(source, table_name, parent_id, parent_type, conn, chunk_size,
 
         LOGGER.info("Table creation complete, linking to image")
         orig_file = table.getOriginalFile()
-
-        # create file link
-        link_obj = LINK_TYPES[parent_type]()
-        target_obj = OBJECT_TYPES[parent_type](parent_id, False)
-        # create annotation
+        # Create FileAnnotation from OriginalFile
         annotation = omero.model.FileAnnotationI()
-        # link table to annotation object
         annotation.file = orig_file
-
-        link_obj.link(target_obj, annotation)
-        link_obj = conn.getUpdateService().saveAndReturnObject(
-            link_obj, {"omero.group": str(parent_group)})
-        annotation_id = link_obj.child.id.val
-        LOGGER.info(f"Uploaded as FileAnnotation {annotation_id}")
-        extra_link_objs = []
-        unloaded_ann = omero.model.FileAnnotationI(annotation_id, False)
-        for ob_type, ob_id in link_to:
-            # Construct additional links
-            link_obj = LINK_TYPES[ob_type]()
-            target_obj = OBJECT_TYPES[ob_type](ob_id, False)
-            link_obj.link(target_obj, unloaded_ann)
-            extra_link_objs.append(link_obj)
-        if extra_link_objs:
-            try:
-                conn.getUpdateService().saveArray(
-                    extra_link_objs, {"omero.group": str(parent_group)})
-                LOGGER.info(f"Added links to {len(extra_link_objs)} objects")
-            except Exception:
-                LOGGER.error("Failed to create extra links", exc_info=True)
-        LOGGER.info(f"Finished creating table {table_name} under "
-                    f"{parent_type} {parent_id}")
-        return annotation_id
+        annotation_obj = conn.getUpdateService().saveAndReturnObject(
+            annotation, {"omero.group": str(working_group)})
+        LOGGER.info(f"Generated FileAnnotation {annotation_obj.id.val} "
+                    f"with OriginalFile {orig_file.id.val}, "
+                    f"linking to targets")
+        # Link the FileAnnotation to all targets
+        unloaded_annotation = omero.model.FileAnnotationI(
+            annotation_obj.id.val, False)
+        link_buffer = []
+        for obj_type, obj_id in links:
+            link_obj = LINK_TYPES[obj_type]()
+            unloaded_target = OBJECT_TYPES[obj_type](obj_id, False)
+            link_obj.link(unloaded_target, unloaded_annotation)
+            link_buffer.append(link_obj)
+        # Transmit links to server
+        conn.getUpdateService().saveArray(
+            link_buffer, {"omero.group": str(working_group)})
+        LOGGER.info(f"Finished creating table {table_name}")
+        return annotation_obj.id.val
     finally:
         if table is not None:
             table.close()

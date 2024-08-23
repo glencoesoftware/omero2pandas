@@ -121,21 +121,42 @@ N.b. It is currently not possible to modify a table on the server.
 Connection handling works just as it does with downloading, you can 
 provide credentials, a token or a connection object.
 
-To upload data, the user needs to specify which OMERO object the table
-will be associated with. To do this, the third and fourth arguments 
-should be the object ID and object type. Supported objects are Dataset, 
+To upload data, the user needs to specify which OMERO object(s) the table
+will be associated with. This can be achieved with the `parent_id` and 
+`parent_type` arguments. Supported objects are Dataset, 
 Well, Plate, Project, Screen and Image.
 
 ```python
 import pandas
 import omero2pandas
 my_data = pandas.read_csv("/path/to/my_data.csv")
-ann_id = omero2pandas.upload_table(my_data, "Name for table", 142, "Image")
-# Returns the annotation ID of the uploaded file object
+ann_id = omero2pandas.upload_table(my_data, "Name for table", 
+                                   parent_id=142, parent_type="Image")
+# Returns the annotation ID of the uploaded FileAnnotation object
 ```
 
 Once uploaded, the table will be accessible on OMERO.web under the file 
 annotations panel of the parent object. Using unique table names is advised.
+
+### Linking to multiple objects
+
+To link to multiple objects, you can supply a list of `(<type>, <id>)`
+tuples to the `links` parameter. The resulting table's FileAnnotation 
+will be linked to all objects in the `links` parameter (plus 
+`parent_type`:`parent_id` if provided).
+
+
+```python
+import omero2pandas
+ann_id = omero2pandas.upload_table(
+    "/path/to/my.csv", "My table", 
+    links=[("Image", 101), ("Dataset", 2), ("Roi", 1923)])
+# Uploads with Annotation links to Image 101, Dataset 2 and ROI 1923 
+```
+
+Links allow OMERO.web to display the resulting table as 
+an annotation associated with those objects.
+
 
 ### Large Tables
 The first argument to `upload_table` can be a pandas dataframe or a path to a 
@@ -150,26 +171,11 @@ ann_id = omero2pandas.upload_table("/path/to/my.csv", "My table",
 # Reads and uploads the file to Image 142, loading 100 lines at a time 
 ```
 
+The `chunk_size` argument sets how many rows to send with each call to the server. 
+If not specified, omero2pandas will attempt to automatically optimise chunk 
+size to send ~2 million table cells per call (up to a max of 50,000 
+rows per message for narrow tables).
 
-### Linking to additional objects
-
-Each table gets linked to a parent object determined by the `parent_id` and
-`parent_id` parameters. This becomes the main parent that the table is 
-associated with in OMERO. You can also supply the `extra_links` parameter to 
-provide extra objects to link the table to. This should be a list of 
-tuples in the format `(<target_type>, <target_id>)`.
-
-
-```python
-import omero2pandas
-ann_id = omero2pandas.upload_table(
-    "/path/to/my.csv", "My table", 142,
-    extra_links=[("Image", 101), ("Dataset", 2), ("Roi", 1923)])
-# Uploads with additional links to Image 101, Dataset 2 and ROI 1923 
-```
-
-Extra links allow OMERO.web to display the resulting table as 
-an annotation associated with multiple objects.
 
 
 

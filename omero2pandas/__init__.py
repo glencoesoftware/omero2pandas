@@ -10,6 +10,7 @@ import collections
 import logging
 import os
 import sys
+from typing import Iterable
 
 import pandas
 import omero
@@ -182,8 +183,8 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
     return df
 
 
-def upload_table(source, table_name, parent_id, parent_type='Image',
-                 extra_links=(), chunk_size=None, omero_connector=None,
+def upload_table(source, table_name, parent_id=None, parent_type='Image',
+                 links=None, chunk_size=None, omero_connector=None,
                  server=None, port=4064, username=None, password=None):
     """
     Upload a pandas dataframe to a new OMERO table.
@@ -194,8 +195,8 @@ def upload_table(source, table_name, parent_id, parent_type='Image',
     :param table_name: Name for the table on OMERO
     :param parent_id: Object ID to attach the table to as an annotation.
     :param parent_type: Object type to attach to.
-    One of: Image, Dataset, Plate, Well
-    :param extra_links: List of (Type, ID) tuples specifying extra objects to
+    One of: Image, Dataset, Project, Well, Plate, Screen, Roi
+    :param links: List of (Type, ID) tuples specifying objects to
     link the table to.
     :param chunk_size: Rows to transmit to the server in a single operation.
     Default: Automatically choose a size
@@ -207,12 +208,28 @@ def upload_table(source, table_name, parent_id, parent_type='Image',
     :param password: Password for server login
     :return: File Annotation ID of the new table
     """
+    # Coerce inputs to the links list input format
+    links = links or []
+    if (len(links) == 2 and
+            isinstance(links[0], str) and isinstance(links[1], int)):
+        # Someone forgot to nest their tuples, let's fix that
+        links = [links]
+    elif isinstance(links, tuple):
+        # Make sure it's mutable
+        links = list(links)
+    if parent_id is not None:
+        if (parent_type, parent_id) not in links:
+            links.append((parent_type, parent_id))
+    if not links:
+        raise ValueError("No OMERO objects to link the table to")
+    elif not isinstance(links, Iterable):
+        raise ValueError(f"Links should be an iterable list of "
+                         f"type/id pairs, not {type(links)}")
     with OMEROConnection(server=server, username=username, password=password,
                          port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
         conn.SERVICE_OPTS.setOmeroGroup('-1')
-        ann_id = create_table(source, table_name, parent_id, parent_type,
-                              conn, chunk_size, extra_links)
+        ann_id = create_table(source, table_name, links, conn, chunk_size)
         if ann_id is None:
             LOGGER.warning("Failed to create OMERO table")
         return ann_id
