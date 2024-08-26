@@ -377,7 +377,7 @@ def _validate_requested_object(file_id, annotation_id):
 
 def connect_to_omero(client=None, server=None, port=4064,
                      username=None, password=None, session_key=None,
-                     allow_token=True, interactive=True):
+                     allow_token=True, interactive=True, keep_alive=True):
     """
     Connect to OMERO and return an OMEROConnection object.
     :param client: An existing omero.client object to be used instead of
@@ -391,6 +391,7 @@ def connect_to_omero(client=None, server=None, port=4064,
     :param allow_token: True/False Search for omero_user_token before trying
     to use credentials. Default True.
     :param interactive: Prompt user for missing login details. Default True.
+    :param keep_alive: Periodically ping the server to prevent session timeout.
     :return: OMEROConnection object wrapping a client and Blitz Gateway object,
     with automatic session management and cleanup.
     """
@@ -398,5 +399,5 @@ def connect_to_omero(client=None, server=None, port=4064,
                                 session_key=session_key, username=username,
                                 password=password, client=client,
                                 allow_token=allow_token)
-    connector.connect(interactive=interactive)
+    connector.connect(interactive=interactive, keep_alive=keep_alive)
     return connector

@@ -166,6 +166,24 @@ with omero2pandas.OMEROConnection(server='my.server', port=4064,
 
 The context manager will handle session creation and cleanup automatically.
 
+### Connection Management
+
+omero2pandas keeps track of any active connector objects and shuts them down 
+safely when Python exits. Deleting all references to a connector will also 
+handle closing the connection to OMERO gracefully. You can also call 
+`connector.shutdown()` to close a connection manually.
+
+By default omero2pandas also keeps active connections alive by pinging the 
+server once per minute (otherwise the session may timeout and require 
+reconnecting). This can be disabled as follows 
+
+```python
+omero2pandas.connect_to_omero(keep_alive=False)
+```
+
+N.b. omero2pandas uses a different system from the native OMERO API's
+`client.enableKeepAlive` function, using both is unnecessary.
+
 ### Querying tables
 
 You can also supply [PyTables condition syntax](https://www.pytables.org/usersguide/condition_syntax.html) to the `read_table` and `download_table` functions.
