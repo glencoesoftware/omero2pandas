@@ -1,63 +1,37 @@
-# https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions
-
 name: Build
 on:
   push:
+    tags:
+      - '*'
   pull_request:
 
 jobs:
-
-  test:
-    name: Test
-    strategy:
-      # Keep running so we can see if other tests pass
-      fail-fast: false
-      matrix:
-        python-version:
-          - '3.8'
-          - '3.9'
-          - '3.10'
-        os:
-          - ubuntu-20.04
-        include:
-          - python-version: '3.8'
-            os: macos-latest
-          - python-version: '3.8'
-            os: windows-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: python -m pip install -U wheel flake8 virtualenv
-      - name: Run tests
-        run: |
-            git fetch --prune --unshallow --tags --force
-            git describe
-            flake8
-            python setup.py build
-
-  # https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
-  publish-pypi:
-    name: Pypi
-    if: startsWith(github.ref, 'refs/tags')
-    needs:
-      # Only publish if other jobs passed
-      - test
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
-      - name: Build package
-        run: |
-          # actions/checkout#206
-          git fetch --prune --unshallow --tags --force
-          python -m pip install wheel setuptools
-          python setup.py sdist bdist_wheel
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install build dependencies
+        run: python -m pip install build flake8
+      - name: Run flake8
+        run: flake8 ./omero2pandas
+      - name: Build wheel
+        run: python -m build
+      - name: Artifact upload
+        uses: actions/upload-artifact@v4
+        with:
+          path: dist/*.whl
+          retention-days: 30
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.3.0
+        if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
-
+          repository_url: https://repo.glencoesoftware.com/repository/omero-workflows/
