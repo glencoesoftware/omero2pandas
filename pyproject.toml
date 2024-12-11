@@ -9,7 +9,7 @@ description = "OMERO.tables to pandas bridge"
 readme = "README.md"
 license = {file = "LICENSE.txt"}
 dependencies = [
-    'omero-py',
+    'omero-py>=5.19.5',
     'pandas>2',
     'tqdm',
 ]
