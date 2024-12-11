@@ -223,9 +223,6 @@ reconnecting). This can be disabled as follows
 omero2pandas.connect_to_omero(keep_alive=False)
 ```
 
-N.b. omero2pandas uses a different system from the native OMERO API's
-`client.enableKeepAlive` function, using both is unnecessary.
-
 ### Querying tables
 
 You can also supply [PyTables condition syntax](https://www.pytables.org/usersguide/condition_syntax.html) to the `read_table` and `download_table` functions.

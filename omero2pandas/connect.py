@@ -10,17 +10,13 @@ import atexit
 import getpass
 import importlib.util
 import logging
-import threading
-import time
 import weakref
 
-import Ice
 import omero
 from omero.gateway import BlitzGateway
 
 LOGGER = logging.getLogger(__name__)
 ACTIVE_CONNECTORS = weakref.WeakSet()
-KEEPALIVE_THREAD = None
 
 
 class OMEROConnection:
@@ -150,9 +146,7 @@ class OMEROConnection:
                 "Not enough details to create a server connection.")
         print(f"Connected to {self.server}")
         if keep_alive:
-            # Use o2p keep alive instead of omero-py
-            self.client.stopKeepAlive()
-            start_keep_alive()
+            self.client.enableKeepAlive(60)
         return True
 
     def connect_widget(self):
@@ -280,15 +274,6 @@ class OMEROConnection:
             LOGGER.warning("Client connection not initialised")
         return self.client
 
-    def keep_alive(self):
-        if self.client is not None and self.session is not None:
-            try:
-                self.session.keepAlive(None)
-            except Ice.CommunicatorDestroyedException:
-                self.session = None  # Was shut down
-            except Exception as e:
-                LOGGER.warning(f"Failed to keep alive: {e}")
-
 
 def detect_jupyter():
     # Determine whether we're running in a Jupyter Notebook.
@@ -312,23 +297,6 @@ def cleanup_sessions():
     # Shut down any active sessions when exiting Python
     for connector in ACTIVE_CONNECTORS:
         connector.shutdown()
-
-
-def keep_sessions_alive():
-    while ACTIVE_CONNECTORS:
-        time.sleep(60)
-        for connector in ACTIVE_CONNECTORS:
-            connector.keep_alive()
-        connector = None  # Don't keep a reference (would prevent shutdown!)
-
-
-def start_keep_alive():
-    global KEEPALIVE_THREAD
-    if KEEPALIVE_THREAD is None or not KEEPALIVE_THREAD.is_alive():
-        KEEPALIVE_THREAD = threading.Thread(target=keep_sessions_alive,
-                                            name="omero2pandas_keepalive",
-                                            daemon=True)
-        KEEPALIVE_THREAD.start()
 
 
 atexit.register(cleanup_sessions)
