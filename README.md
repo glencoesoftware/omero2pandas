@@ -138,6 +138,20 @@ ann_id = omero2pandas.upload_table(my_data, "Name for table",
 Once uploaded, the table will be accessible on OMERO.web under the file 
 annotations panel of the parent object. Using unique table names is advised.
 
+### OMERO ID columns
+
+OMERO.tables support some special column types which associate tabular data 
+with objects on the server. These are defined as integer columns with the 
+following names: `project`, `dataset`, `image`, `screen`, `plate`, `well` and 
+`roi`. These names are case-insensitive. For example, a row with an `Image` 
+column with the value `1033` will be associated with Image 1033.
+
+To display this in omero-web the table itself should be linked to either the 
+object itself or a parent container. i.e. If you have an `image` column 
+referencing several images in a dataset, attach the table itself to the parent 
+dataset and the relevant row data will be visible when viewing the 
+individual images in omero-web.
+
 ### Linking to multiple objects
 
 To link to multiple objects, you can supply a list of `(<type>, <id>)`
