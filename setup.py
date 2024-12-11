@@ -48,7 +48,7 @@ setup(
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'omero-py',
+        'omero-py>=5.19.5',
         'pandas',
         'tqdm',
     ],
