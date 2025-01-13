@@ -72,8 +72,8 @@ def generate_omero_columns(df):
     string_columns = []
     for column_name, column_type in df.dtypes.items():
         cleaned_name = column_name.replace('/', '\\')
-        if column_name in SPECIAL_NAMES and column_type.kind == 'i':
-            col_class = SPECIAL_NAMES[column_name]
+        if column_name.lower() in SPECIAL_NAMES and column_type.kind == 'i':
+            col_class = SPECIAL_NAMES[column_name.lower()]
         elif column_type.kind in COLUMN_TYPES:
             col_class = COLUMN_TYPES[column_type.kind]
         else:
