@@ -8,12 +8,6 @@ name = "omero2pandas"
 description = "OMERO.tables to pandas bridge"
 readme = "README.md"
 license = {file = "LICENSE.txt"}
-dependencies = [
-    'omero-py>=5.19.5',
-    'pandas>2',
-    'tqdm',
-]
-requires-python = ">=3.9"
 authors = [
     {name = "Glencoe Software, Inc.", email="info@glencoesoftware.com"},
 ]
@@ -25,10 +19,19 @@ classifiers = [
     'Intended Audience :: End Users/Desktop',
     'Programming Language :: Python :: 3',
 ]
-
+requires-python = ">=3.9"
+dependencies = [
+    'omero-py>=5.19.5',
+    'pandas>2',
+    'tqdm',
+]
 
 [project.optional-dependencies]
 token = ["omero-user-token>=0.3.0"]
+remote = [
+    "pyarrow>=19.0.0",
+    "tiledb>=0.33.2",
+]
 
 [project.urls]
 github = "https://github.com/glencoesoftware/omero2pandas"

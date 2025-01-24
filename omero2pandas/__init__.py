@@ -7,6 +7,7 @@
 # If the file is missing please request a copy by contacting
 # support@glencoesoftware.com.
 import collections
+from importlib.util import find_spec
 import logging
 import os
 import sys
@@ -19,6 +20,10 @@ from tqdm.auto import tqdm
 
 from omero2pandas.connect import OMEROConnection
 from omero2pandas.upload import create_table
+if find_spec("tiledb"):
+    from omero2pandas.remote import register_table
+else:
+    register_table = None
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-7s [%(name)16s] %(message)s",
@@ -185,7 +190,8 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
 
 def upload_table(source, table_name, parent_id=None, parent_type='Image',
                  links=None, chunk_size=None, omero_connector=None,
-                 server=None, port=4064, username=None, password=None):
+                 server=None, port=4064, username=None, password=None,
+                 local_path=None, remote_path=None):
     """
     Upload a pandas dataframe to a new OMERO table.
     For the connection, supply either an active client object or server
@@ -205,6 +211,10 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
     :param server: Address of the server
     :param port: Port the server runs on (default 4064)
     :param username: Username for server login
+    :param local_path: [TileDB only], construct table at this file path and
+                       register remotely
+    :param remote_path: [TileDB only], mapping for local_path on the server
+                        (if different from local system)
     :param password: Password for server login
     :return: File Annotation ID of the new table
     """
@@ -220,7 +230,7 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
     if parent_id is not None:
         if (parent_type, parent_id) not in links:
             links.append((parent_type, parent_id))
-    if not links:
+    if not links and not local_path:
         raise ValueError("No OMERO objects to link the table to")
     elif not isinstance(links, Iterable):
         raise ValueError(f"Links should be an iterable list of "
@@ -229,7 +239,14 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
                          port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
         conn.SERVICE_OPTS.setOmeroGroup('-1')
-        ann_id = create_table(source, table_name, links, conn, chunk_size)
+        if local_path or remote_path:
+            if not register_table:
+                raise ValueError("Remote table support is not installed")
+            ann_id = register_table(source, table_name, links,
+                                    connector.server, chunk_size,
+                                    local_path, remote_path)
+        else:
+            ann_id = create_table(source, table_name, links, conn, chunk_size)
         if ann_id is None:
             LOGGER.warning("Failed to create OMERO table")
         return ann_id
