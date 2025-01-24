@@ -10,7 +10,9 @@ import logging
 from pathlib import Path, PurePosixPath
 import time
 
+import pandas as pd
 import tiledb
+from tqdm.auto import tqdm
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,9 +34,26 @@ def register_table(source, chunk_size, local_path, remote_path):
     LOGGER.info("Writing data to TileDB")
     # Export table
     if isinstance(source, (str, Path)):
-        tiledb.from_csv(write_path, source, chunksize=chunk_size)
+        data_iterator = pd.read_csv(source, chunksize=chunk_size)
+        total_rows = None
     else:
-        tiledb.from_pandas(write_path, source, chunksize=chunk_size)
+        data_iterator = (source.iloc[i:i + chunk_size]
+                         for i in range(0, len(source), chunk_size))
+        total_rows = len(source)
+    progress_monitor = tqdm(
+        desc="Generating TileDB file...", initial=1, dynamic_ncols=True,
+        total=total_rows,
+        bar_format='{desc}: {percentage:3.0f}%|{bar}| '
+                   '{n_fmt}/{total_fmt} rows, {elapsed} {postfix}')
+    row_idx = 0
+    for chunk in data_iterator:
+        tiledb.from_pandas(write_path, chunk, sparse=True, full_domain=True,
+                           tile=10000, attr_filters=None,
+                           row_start_idx=row_idx, allows_duplicates=False,
+                           mode="append" if row_idx else "ingest")
+        progress_monitor.update(len(chunk))
+        row_idx += len(chunk)
+    progress_monitor.close()
     LOGGER.debug("Appending metadata to TileDB")
     # Append omero metadata
     with tiledb.open(write_path, mode="w") as array:
