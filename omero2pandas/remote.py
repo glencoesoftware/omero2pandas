@@ -31,6 +31,8 @@ def register_table(source, chunk_size, local_path, remote_path):
         raise ValueError(f"Table file {write_path} already exists")
     # path.as_uri() exists but mangles any spaces in the path!
     write_path = str(write_path)
+    # Use a default chunk size if not set
+    chunk_size = chunk_size or 1000
     LOGGER.info("Writing data to TileDB")
     # Export table
     if isinstance(source, (str, Path)):
