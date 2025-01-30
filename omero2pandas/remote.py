@@ -19,7 +19,7 @@ LOGGER = logging.getLogger(__name__)
 OMERO_TILEDB_VERSION = '3'  # Version of the omero table implementation
 
 
-def register_table(source, chunk_size, local_path, remote_path):
+def register_table(source, local_path, remote_path=None, chunk_size=1000):
     LOGGER.info("Registering remote table")
     # Default filters from tiledb.from_pandas()
     write_path = Path(local_path or remote_path).with_suffix(".tiledb")

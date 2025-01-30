@@ -242,8 +242,9 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
         if local_path or remote_path:
             if not register_table:
                 raise ValueError("Remote table support is not installed")
-            ann_id = register_table(
-                source, chunk_size, local_path, remote_path)
+            ann_id = register_table(source, local_path,
+                                    remote_path=remote_path,
+                                    chunk_size=chunk_size)
         else:
             ann_id = create_table(source, table_name, links, conn, chunk_size)
         if ann_id is None:

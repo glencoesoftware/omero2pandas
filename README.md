@@ -277,8 +277,10 @@ For OMERO installations which support TileDB as the OMERO.tables backend it
 is possible to register tables in-place in a similar manner to in-place image 
 imports (otherwise table data is stored in the ManagedRepository).
 
-N.b. If you don't know what table backend your OMERO server is using, you probably 
-don't have this feature available.
+If you don't know what table backend your OMERO server is using, you probably 
+don't have this feature available. If you have access to the server machine you 
+can check by running `omero config get omero.tables.module`, if the response is 
+`omero_plus.run_tables_pytables_or_tiledb` then tiledb is available.
 
 This feature is currently in active development. The current version of 
 omero2pandas can export tables locally in TileDB format to be registered with 
