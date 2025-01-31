@@ -1,6 +1,6 @@
 # encoding: utf-8
 #
-# Copyright (c) 2023 Glencoe Software, Inc. All rights reserved.
+# Copyright (c) Glencoe Software, Inc. All rights reserved.
 #
 # This software is distributed under the terms described by the LICENCE file
 # you can find at the root of the distribution bundle.
@@ -9,6 +9,7 @@
 import logging
 import math
 import os
+from pathlib import Path
 
 import omero
 import omero.grid
@@ -170,7 +171,7 @@ def create_table(source, table_name, links, conn, chunk_size):
         bar_format='{desc}: {percentage:3.0f}%|{bar}| '
                    '{n_fmt}/{total_fmt} rows, {elapsed} {postfix}')
 
-    if isinstance(source, str):
+    if isinstance(source, (str, Path)):
         assert os.path.exists(source), f"Could not find file {source}"
         columns, str_cols, total_rows, chunk_size = generate_omero_columns_csv(
             source, chunk_size)

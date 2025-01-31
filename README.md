@@ -270,3 +270,43 @@ These should match the relevant column type. Mapped variables are substituted in
 
 A `variables` map usually isn't needed for simple queries. The basic condition string should automatically get converted to a meaningful type, but when this fails 
 replacing tricky elements with a variable may help.
+
+### Remote registration [Experimental]
+
+For **OMERO Plus** installations which support TileDB as the OMERO.tables backend 
+it is possible to register tables in-place in a similar manner to in-place image 
+imports (otherwise table data is stored in the ManagedRepository).
+
+If you don't know what table backend your OMERO Plus server is using, you 
+probably don't have this feature available. If you have access to the server 
+machine you can check by running `omero config get omero.tables.module`, 
+if the response is `omero_plus.run_tables_pytables_or_tiledb` then tiledb is 
+available.
+
+This feature is currently in active development. The current version of 
+omero2pandas can export tables locally in TileDB format to be registered with 
+OMERO using external tooling.
+
+
+For this mode to be available extra dependencies must also be installed as follows
+
+```bash
+pip install omero2pandas[remote]
+```
+
+To activate this mode use `omero2pandas.upload_table` with arguments as 
+follows:
+
+```python
+import omero2pandas
+db_path = omero2pandas.upload_table("/path/to/my_data.csv", "Name for table", 
+                                    local_path="/path/to/mytable.tiledb")
+# Returns the path to the created tiledb file
+```
+
+Similar to regular table uploads, the input can be a dataframe in memory or a 
+csv file on disk.
+
+A `remote_path` argument is also available. In future versions this will be 
+used if the remote table path is different from the server's point of view (e.g. 
+network drives are mapped at another location).
