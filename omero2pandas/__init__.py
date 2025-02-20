@@ -10,7 +10,6 @@ import collections
 from importlib.util import find_spec
 import logging
 import os
-import sys
 from typing import Iterable
 
 import pandas
@@ -24,10 +23,6 @@ if find_spec("tiledb"):
     from omero2pandas.remote import register_table
 else:
     register_table = None
-
-logging.basicConfig(
-    format="%(asctime)s %(levelname)-7s [%(name)16s] %(message)s",
-    stream=sys.stdout)
 
 LOGGER = logging.getLogger(__name__)
 
