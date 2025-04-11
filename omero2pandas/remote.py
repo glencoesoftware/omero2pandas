@@ -52,6 +52,9 @@ def create_remote_table(source, local_path, remote_path=None, table_name=None,
 
 
 def create_tiledb(source, output_path, chunk_size=1000):
+    if not isinstance(output_path, Path):
+        # Convert strings to proper path objects
+        output_path = Path(output_path)
     if output_path.exists():
         raise ValueError(f"Table file {output_path} already exists")
     output_path.parent.mkdir(parents=True, exist_ok=True)
