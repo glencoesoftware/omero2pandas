@@ -279,7 +279,7 @@ imports (otherwise table data is stored in the ManagedRepository).
 
 This is a two-step process:
 1) Convert the dataframe into a TileDB file
-2) Register the remote converted table with the OMERO server
+2) Register the remote converted table with OMERO
 
 If you don't know what table backend your OMERO Plus server is using, you 
 probably don't have this feature available. If you have access to the server 
@@ -304,7 +304,7 @@ db_path = omero2pandas.upload_table("/path/to/my_data.csv", "Name for table",
 ```
 
 Similar to regular table uploads, the input can be a dataframe in memory or a 
-csv file on disk. The input will be converted into a TileDB database and 
+csv file on disk. The input will be copied into a new TileDB database and 
 registered to OMERO in-place.
 
 To perform this kind of registration you need to provide the `local_path` argument 
@@ -347,13 +347,13 @@ creating a TileDB database from your dataframe and adding a few details to
 the converted table array metadata. Most native pandas column types are supported.
 
 The actual registration involves telling the server that we'd like to register a 
-remote table and providing it with the tiledb file location. There is then a 
+remote table and providing it with the TileDB location. There is then a 
 validation process to ensure that the table seen by the server is the same one that 
 the user has requested the API to register. This is achieved by writing a "SecretToken" 
 key to the tiledb array metadata. The tiledb file seen by the server must have a key 
 matching the one provided in the registration call managed by omero2pandas.
 
-While it is possible to manually create and register tables without a security key, 
+While it is possible to manually create and register tables without a `SecretToken`, 
 this is strongly discouraged as other users could potentially register and access 
 the same table without permission. With that in mind the implementation within 
 omero2pandas could be considered as an example of "best practice" for handling 
@@ -372,7 +372,7 @@ TileDB file. This can be achieved as follows:
 import pandas as pd
 from omero2pandas.remote import create_tiledb
 df = pd.read_csv("/path/to/table.csv")
-security_key = create_tiledb(df, "/path/to/output.tiledb")
+secret_token = create_tiledb(df, "/path/to/output.tiledb")
 ```
 
 This will convert an input dataframe of csv file path into a TileDB file with 
