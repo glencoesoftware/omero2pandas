@@ -44,8 +44,6 @@ def create_remote_table(source, table_name, local_path, remote_path=None,
             remote_path = remote_path / write_path.name
     LOGGER.debug(f"Remote path would be {str(remote_path)}")
     token = create_tiledb(source, write_path, chunk_size=chunk_size)
-    if not write_path.exists():
-        raise ValueError(f"Table {write_path} appears to be missing?")
     ann_id = register_table(connector, remote_path, table_name, links, token,
                             prefix=prefix)
     return ann_id
