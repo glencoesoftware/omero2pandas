@@ -218,6 +218,8 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
     :param password: Password for server login
     :return: File Annotation ID of the new table
     """
+    if not table_name or not isinstance(table_name, str):
+        raise ValueError(f"Invalid table name: '{table_name}'")
     # Coerce inputs to the links list input format
     links = links or []
     if (len(links) == 2 and
@@ -240,9 +242,8 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
         if local_path or remote_path:
             if not create_remote_table:
                 raise ValueError("Remote table support is not installed")
-            ann_id = create_remote_table(source, local_path,
+            ann_id = create_remote_table(source, table_name, local_path,
                                          remote_path=remote_path,
-                                         table_name=table_name,
                                          links=links,
                                          chunk_size=chunk_size,
                                          connector=connector,

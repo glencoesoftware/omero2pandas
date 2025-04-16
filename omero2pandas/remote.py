@@ -27,7 +27,7 @@ TOKEN_ENDPOINT = "/api/v0/token"
 REGISTER_ENDPOINT = "/omero_plus/api/v0/table"
 
 
-def create_remote_table(source, local_path, remote_path=None, table_name=None,
+def create_remote_table(source, table_name, local_path, remote_path=None,
                         links=(), chunk_size=1000, connector=None,
                         prefix=""):
     LOGGER.info("Registering remote table")
