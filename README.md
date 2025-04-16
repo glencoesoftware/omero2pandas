@@ -347,11 +347,13 @@ creating a TileDB database from your dataframe and adding a few details to
 the converted table array metadata. Most native pandas column types are supported.
 
 The actual registration involves telling the server that we'd like to register a 
-remote table and providing it with the TileDB location. There is then a 
-validation process to ensure that the table seen by the server is the same one that 
-the user has requested the API to register. This is achieved by writing a "SecretToken" 
-key to the tiledb array metadata. The tiledb file seen by the server must have a key 
-matching the one provided in the registration call managed by omero2pandas.
+remote table and providing it with the TileDB location. There is then a security 
+check to ensure that the user is able to read the file that they've asked the API 
+to register. This is achieved by asking the user to provide a "SecretToken" 
+which must also be present in the the TileDB array metadata. omero2pandas will 
+manage the creation of this token automatically. When using omero2pandas this 
+process also implicitly confirms that the table seen by the server is the same 
+one written by this library.
 
 While it is possible to manually create and register tables without a `SecretToken`, 
 this is strongly discouraged as other users could potentially register and access 
