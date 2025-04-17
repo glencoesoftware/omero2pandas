@@ -232,7 +232,7 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
     if parent_id is not None:
         if (parent_type, parent_id) not in links:
             links.append((parent_type, parent_id))
-    if not links and not local_path:
+    if not links:
         raise ValueError("No OMERO objects to link the table to")
     elif not isinstance(links, Iterable):
         raise ValueError(f"Links should be an iterable list of "
