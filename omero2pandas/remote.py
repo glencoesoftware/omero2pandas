@@ -33,7 +33,8 @@ def create_remote_table(source, table_name, local_path, remote_path=None,
     LOGGER.info("Registering remote table")
     # Default filters from tiledb.from_pandas()
     write_path = Path(local_path)
-    if write_path.is_dir():
+    if write_path.is_dir() and not write_path.name.endswith(".tiledb"):
+        # Generate file name from the table name if not provided
         write_path = (write_path / table_name).with_suffix(".tiledb")
     # Assume the server will be running on Linux
     if remote_path is None:
