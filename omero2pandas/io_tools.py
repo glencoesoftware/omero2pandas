@@ -22,15 +22,12 @@ class OriginalFileIO(io.RawIOBase):
     Reader for loading data from OMERO OriginalFile objects with a
     Python file-like interface
 
-    Only a single RawFileStore instance can exist per BlitzGateway,
-    loading multiple readers will change the target file for the FileStore.
-
     For optimal performance this class should be wrapped in a BufferedReader,
     use the get_annotation_reader convenience function for this.
     """
     def __init__(self, conn: BlitzGateway, file_id: int, reporter=None):
         LOGGER.debug(f"Creating new  for file {file_id}")
-        self._prx = conn.createRawFileStore()
+        self._prx = conn.c.getSession().createRawFileStore()
         self._file_id = file_id
         self.open()
         if not (size := self._prx.size()):
@@ -51,9 +48,13 @@ class OriginalFileIO(io.RawIOBase):
 
     def open(self):
         current = unwrap(self._prx.getFileId())
-        if current != self._file_id:
+        if current is None:
+            # RawFileStore is new or was previously closed
             LOGGER.debug(f"Setting IO file ID to {self._file_id}")
             self._prx.setFileId(self._file_id, {"omero.group": "-1"})
+        elif current != self._file_id:
+            # Something else is messing with our filestore
+            raise Exception("RawFileStore pointed to incorrect object")
 
     def read(self, size=-1):
         # Read `size` bytes from the target object. -1 = 'read all'
@@ -65,7 +66,6 @@ class OriginalFileIO(io.RawIOBase):
         if not size or self._offset >= self._size:
             LOGGER.debug("Nothing to read")
             return b""
-        self.open()
         data = self._prx.read(self._offset, size)
         self._offset += size
         if self._reporter is not None:
