@@ -352,13 +352,15 @@ def download_table(target_path, file_id=None, annotation_id=None,
 
 def read_csv(file_id=None, annotation_id=None, column_names=None,
              chunk_size=1048576, omero_connector=None, server=None, port=4064,
-             username=None, password=None):
+             username=None, password=None, **kwargs):
     """
     Read a csv or csv.gz file stored as an OMERO OriginalFile/FileAnnotation
     into a pandas dataframe.
     Supply either a file or annotation ID.
     Convenience method for scenarios where data was uploaded as a raw CSV
     rather than an OMERO.tables object.
+    Additional keyword arguments will be forwarded to the pandas.read_csv
+    method
     :param file_id: ID of the OriginalFile to load
     :param annotation_id: ID of the FileAnnotation to load
     :param column_names: Optional list of column names to return
@@ -373,6 +375,9 @@ def read_csv(file_id=None, annotation_id=None, column_names=None,
     """
     object_id, object_type = _validate_requested_object(
         file_id=file_id, annotation_id=annotation_id)
+    if "usecols" in kwargs:
+        raise ValueError(
+            "Provide 'column_names' for column selection, not 'usecols'")
 
     with OMEROConnection(server=server, username=username, password=password,
                          port=port, client=omero_connector) as connector:
@@ -381,8 +386,8 @@ def read_csv(file_id=None, annotation_id=None, column_names=None,
         file_id = unwrap(orig_file.id)
         file_name = unwrap(orig_file.name)
         file_mimetype = unwrap(orig_file.mimetype)
-
-        compression = infer_compression(file_mimetype, file_name)
+        if "compression" not in kwargs:
+            compression = infer_compression(file_mimetype, file_name)
 
         # Check that the OriginalFile has the expected mimetype
 
@@ -396,7 +401,7 @@ def read_csv(file_id=None, annotation_id=None, column_names=None,
                                    chunk_size, reporter=chunk_iter) as reader:
             df = pandas.read_csv(reader,
                                  compression=compression,
-                                 usecols=column_names)
+                                 usecols=column_names, **kwargs)
         chunk_iter.close()
     return df
 
