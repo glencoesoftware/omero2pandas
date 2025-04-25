@@ -359,7 +359,7 @@ def read_csv(file_id=None, annotation_id=None, column_names=None,
     Supply either a file or annotation ID.
     Convenience method for scenarios where data was uploaded as a raw CSV
     rather than an OMERO.tables object.
-    :param file_id: ID of the Original to load
+    :param file_id: ID of the OriginalFile to load
     :param annotation_id: ID of the FileAnnotation to load
     :param column_names: Optional list of column names to return
     :param omero_connector: OMERO.client object which is already connected
