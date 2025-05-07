@@ -56,6 +56,11 @@ OBJECT_TYPES = {
     "Screen": omero.model.ScreenI,
     "Well": omero.model.WellI,
     "Roi": omero.model.RoiI,
+    "FileAnnotation": omero.model.FileAnnotationI,
+    "ListAnnotation": omero.model.ListAnnotationI,
+    "MapAnnotation": omero.model.MapAnnotationI,
+    "TagAnnotation": omero.model.TagAnnotationI,
+    "XmlAnnotation": omero.model.XmlAnnotationI,
 }
 
 
@@ -151,7 +156,8 @@ def create_table(source, table_name, links, conn, chunk_size):
                                       f"supported as a link target")
         if target_type != "Roi":
             roi_only = False
-        target_ob = conn.getObject(target_type, target_id)
+        target_ob = conn.getQueryService().find(target_type, target_id,
+                                                {"omero.group": "-1"})
         if target_ob is None:
             raise ValueError(f"{target_type} #{target_id} not found")
         target_group = target_ob.details.group.id.val
@@ -225,7 +231,10 @@ def create_table(source, table_name, links, conn, chunk_size):
             annotation_obj.id.val, False)
         link_buffer = []
         for obj_type, obj_id in links:
-            link_obj = LINK_TYPES[obj_type]()
+            if "annotation" in obj_type.lower():
+                link_obj = omero.model.AnnotationAnnotationLinkI()
+            else:
+                link_obj = LINK_TYPES[obj_type]()
             unloaded_target = OBJECT_TYPES[obj_type](obj_id, False)
             link_obj.link(unloaded_target, unloaded_annotation)
             link_buffer.append(link_obj)
