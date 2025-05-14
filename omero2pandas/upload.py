@@ -56,10 +56,16 @@ OBJECT_TYPES = {
     "Screen": omero.model.ScreenI,
     "Well": omero.model.WellI,
     "Roi": omero.model.RoiI,
+    "BooleanAnnotation": omero.model.BooleanAnnotationI,
+    "CommentAnnotation": omero.model.CommentAnnotationI,
+    "DoubleAnnotation": omero.model.DoubleAnnotationI,
     "FileAnnotation": omero.model.FileAnnotationI,
     "ListAnnotation": omero.model.ListAnnotationI,
+    "LongAnnotation": omero.model.LongAnnotationI,
     "MapAnnotation": omero.model.MapAnnotationI,
     "TagAnnotation": omero.model.TagAnnotationI,
+    "TermAnnotation": omero.model.TermAnnotationI,
+    "TimestampAnnotation": omero.model.TimestampAnnotationI,
     "XmlAnnotation": omero.model.XmlAnnotationI,
 }
 
@@ -145,8 +151,9 @@ def generate_omero_columns_csv(csv_path, chunk_size=1000):
 
 def create_table(source, table_name, links, conn, chunk_size):
     # Create an OMERO.table and upload data
-    # Make type case-insensitive
-    links = [(t.lower().capitalize(), i) for t, i in links]
+    # Make type case-insensitive, handling annotation caps properly
+    links = [(t.lower().capitalize().replace("annotation", "Annotation"), i)
+             for t, i in links]
     # Validate link list
     working_group = None
     roi_only = True
