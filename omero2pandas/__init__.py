@@ -389,7 +389,7 @@ def read_csv(file_id=None, annotation_id=None, column_names=None,
         raise ValueError(
             "Provide 'column_names' for column selection, not 'usecols'")
 
-    with OMEROConnection(server=server, username=username, password=password,
+    with _get_connection(server=server, username=username, password=password,
                          port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
         orig_file = _get_original_file(conn, object_type, object_id)
@@ -445,8 +445,8 @@ def download_csv(target_path, file_id=None, annotation_id=None,
     assert not os.path.exists(target_path), \
         f"Target file {target_path} already exists"
 
-    with (OMEROConnection(server=server, username=username, password=password,
-                          port=port, client=omero_connector) as connector):
+    with _get_connection(server=server, username=username, password=password,
+                         port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
 
         orig_file = _get_original_file(conn, object_type, object_id)
