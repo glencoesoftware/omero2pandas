@@ -20,9 +20,9 @@ from tqdm.auto import tqdm
 from omero2pandas.connect import OMEROConnection
 from omero2pandas.upload import create_table
 if find_spec("tiledb"):
-    from omero2pandas.remote import register_table
+    from omero2pandas.remote import create_remote_table
 else:
-    register_table = None
+    create_remote_table = None
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ def get_table_size(file_id=None, annotation_id=None, omero_connector=None,
     object_id, object_type = _validate_requested_object(
         file_id=file_id, annotation_id=annotation_id)
 
-    with OMEROConnection(server=server, username=username, password=password,
+    with _get_connection(server=server, username=username, password=password,
                          port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
         data_table = _get_table(conn, object_type, object_id)
@@ -78,7 +78,7 @@ def get_table_columns(file_id=None, annotation_id=None,
     object_id, object_type = _validate_requested_object(
         file_id=file_id, annotation_id=annotation_id)
 
-    with OMEROConnection(server=server, username=username, password=password,
+    with _get_connection(server=server, username=username, password=password,
                          port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
 
@@ -124,7 +124,7 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
     object_id, object_type = _validate_requested_object(
         file_id=file_id, annotation_id=annotation_id)
 
-    with OMEROConnection(server=server, username=username, password=password,
+    with _get_connection(server=server, username=username, password=password,
                          port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
 
@@ -186,7 +186,7 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
 def upload_table(source, table_name, parent_id=None, parent_type='Image',
                  links=None, chunk_size=None, omero_connector=None,
                  server=None, port=4064, username=None, password=None,
-                 local_path=None, remote_path=None):
+                 local_path=None, remote_path=None, prefix=""):
     """
     Upload a pandas dataframe to a new OMERO table.
     For the connection, supply either an active client object or server
@@ -210,9 +210,16 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
                        register remotely
     :param remote_path: [TileDB only], mapping for local_path on the server
                         (if different from local system)
+    :param prefix: [TileDB only], API prefix for your OMERO server,
+                   relative to server URL. Use this if your OMERO server
+                   is not at the top-level URL of the server.
+                   e.g. for my.omero.server/custom_omero
+                   supply prefix="custom_omero"
     :param password: Password for server login
     :return: File Annotation ID of the new table
     """
+    if not table_name or not isinstance(table_name, str):
+        raise ValueError(f"Invalid table name: '{table_name}'")
     # Coerce inputs to the links list input format
     links = links or []
     if (len(links) == 2 and
@@ -225,22 +232,25 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
     if parent_id is not None:
         if (parent_type, parent_id) not in links:
             links.append((parent_type, parent_id))
-    if not links and not local_path:
+    if not links:
         raise ValueError("No OMERO objects to link the table to")
     elif not isinstance(links, Iterable):
         raise ValueError(f"Links should be an iterable list of "
                          f"type/id pairs, not {type(links)}")
-    with OMEROConnection(server=server, username=username, password=password,
+    with _get_connection(server=server, username=username, password=password,
                          port=port, client=omero_connector) as connector:
-        conn = connector.get_gateway()
-        conn.SERVICE_OPTS.setOmeroGroup('-1')
         if local_path or remote_path:
-            if not register_table:
+            if not create_remote_table:
                 raise ValueError("Remote table support is not installed")
-            ann_id = register_table(source, local_path,
-                                    remote_path=remote_path,
-                                    chunk_size=chunk_size)
+            ann_id = create_remote_table(source, table_name, local_path,
+                                         remote_path=remote_path,
+                                         links=links,
+                                         chunk_size=chunk_size,
+                                         connector=connector,
+                                         prefix=prefix)
         else:
+            conn = connector.get_gateway()
+            conn.SERVICE_OPTS.setOmeroGroup('-1')
             ann_id = create_table(source, table_name, links, conn, chunk_size)
         if ann_id is None:
             LOGGER.warning("Failed to create OMERO table")
@@ -288,7 +298,7 @@ def download_table(target_path, file_id=None, annotation_id=None,
     assert not os.path.exists(target_path), \
         f"Target file {target_path} already exists"
 
-    with OMEROConnection(server=server, username=username, password=password,
+    with _get_connection(server=server, username=username, password=password,
                          port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
 
@@ -433,3 +443,10 @@ def connect_to_omero(client=None, server=None, port=4064,
                                 allow_token=allow_token)
     connector.connect(interactive=interactive, keep_alive=keep_alive)
     return connector
+
+
+def _get_connection(client=None, **kwargs):
+    """Create an OMEROConnection instance or use existing if supplied"""
+    if client is not None and isinstance(client, OMEROConnection):
+        return client
+    return OMEROConnection(client=client, **kwargs)

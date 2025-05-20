@@ -271,22 +271,21 @@ These should match the relevant column type. Mapped variables are substituted in
 A `variables` map usually isn't needed for simple queries. The basic condition string should automatically get converted to a meaningful type, but when this fails 
 replacing tricky elements with a variable may help.
 
-### Remote registration [Experimental]
+### Remote registration
 
 For **OMERO Plus** installations which support TileDB as the OMERO.tables backend 
 it is possible to register tables in-place in a similar manner to in-place image 
 imports (otherwise table data is stored in the ManagedRepository).
+
+This is a two-step process:
+1) Convert the dataframe into a TileDB file
+2) Register the remote converted table with OMERO
 
 If you don't know what table backend your OMERO Plus server is using, you 
 probably don't have this feature available. If you have access to the server 
 machine you can check by running `omero config get omero.tables.module`, 
 if the response is `omero_plus.run_tables_pytables_or_tiledb` then tiledb is 
 available.
-
-This feature is currently in active development. The current version of 
-omero2pandas can export tables locally in TileDB format to be registered with 
-OMERO using external tooling.
-
 
 For this mode to be available extra dependencies must also be installed as follows
 
@@ -305,8 +304,82 @@ db_path = omero2pandas.upload_table("/path/to/my_data.csv", "Name for table",
 ```
 
 Similar to regular table uploads, the input can be a dataframe in memory or a 
-csv file on disk.
+csv file on disk. The input will be copied into a new TileDB database and 
+registered to OMERO in-place.
 
-A `remote_path` argument is also available. In future versions this will be 
-used if the remote table path is different from the server's point of view (e.g. 
-network drives are mapped at another location).
+To perform this kind of registration you need to provide the `local_path` argument 
+to the standard `omero2pandas.upload_table` function (alongside required params for 
+a "normal" upload e.g. server connection details). The local path is the file path 
+where the tiledb file will be written to and registered to OMERO from. 
+If you provide a directory instead the tiledb file will be named based on the `table_name` argument.
+
+Naturally, the OMERO server will need to be able to access the resulting tiledb file 
+in order to be registered. If the `local_path` is also visible from the server machine
+(e.g. you're running the upload on the server itself) then that's sufficient. Otherwise 
+a `remote_path` argument is also available to tell the server where it should 
+find the table. This is typically needed if the tiledb file ends up mounted at a 
+different location between the local machine and the OMERO server.
+
+For example, if registering from a Windows machine with a network drive to an OMERO server on Linux:
+```python
+omero2pandas.upload_table(
+    df, "My Custom Table",
+    local_path="J:\\data\\tables\\my_omero_table.tiledb",
+    remote_path="/network_data/tables/my_omero_table.tiledb"
+)
+```
+
+Effectively, `local_path` is where the current machine should write the data to, `remote_path` 
+is where that file will be from the OMERO server's point of view. No remote path 
+implies that both machines will see the file at the local path.
+
+Note that when a table is registered remotely it is not part of the Managed Repository 
+used to store OMERO data. This means that it becomes the user's responsibility to 
+update the table object on the OMERO server if the file is moved/deleted.
+
+#### How it works
+
+Remote registration is a two-step process: conversion to TileDB format followed 
+by registration using a HTTP API. 
+
+The TileDB conversion is handled automatically by omero2pandas. This largely involves 
+creating a TileDB database from your dataframe and adding a few details to 
+the converted table array metadata. Most native pandas column types are supported.
+
+The actual registration involves telling the server that we'd like to register a 
+remote table and providing it with the TileDB location. There is then a security 
+check to ensure that the user is able to read the file that they've asked the API 
+to register. This is achieved by asking the user to provide a "SecretToken" 
+which must also be present in the the TileDB array metadata. omero2pandas will 
+manage the creation of this token automatically. When using omero2pandas this 
+process also implicitly confirms that the table seen by the server is the same 
+one written by this library.
+
+While it is possible to manually create and register tables without a `SecretToken`, 
+this is strongly discouraged as other users could potentially register and access 
+the same table without permission. With that in mind the implementation within 
+omero2pandas could be considered as an example of "best practice" for handling 
+remote table registration.
+
+If the registration succeeds the tables API will create all the necessary OMERO 
+objects and return a FileAnnotation ID just as if we'd uploaded the table normally.
+
+#### Converting to TileDB format without registration
+
+While the processes of tiledb conversion and remote registration are intended to 
+be used together, it is possible to only convert a table to an OMERO Plus-compatible
+TileDB file. This can be achieved as follows:
+
+```python
+import pandas as pd
+from omero2pandas.remote import create_tiledb
+df = pd.read_csv("/path/to/table.csv")
+secret_token = create_tiledb(df, "/path/to/output.tiledb")
+```
+
+This will convert an input dataframe of csv file path into a TileDB file with 
+appropriate metadata for remote registration.
+
+For convenience the creation function will return the SecretToken needed to perform 
+remote registration securely. That token could also be retrieved from the TileDB 
+file metadata if necessary.

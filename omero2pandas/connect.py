@@ -42,8 +42,20 @@ class OMEROConnection:
         self.session = None
         self.gateway = None
         self.temp_session = False
-        self.server = server
-        self.port = port
+        if client is not None:
+            # Infer details from client, fallback to params
+            self.server = client.getProperty("omero.host")
+            if server and self.server != server:
+                LOGGER.warning(f"Host already set to '{self.server}' in "
+                               f"provided client, param will be ignored")
+            elif server and not self.server:
+                self.server = server
+            self.port = client.getProperty("omero.port") or port
+            if not self.server:
+                LOGGER.error("Unknown host for provided client")
+        else:
+            self.server = server
+            self.port = port
         self.username = username
         self.password = password
         self.session_key = session_key
