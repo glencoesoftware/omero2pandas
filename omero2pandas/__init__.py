@@ -15,9 +15,11 @@ from typing import Iterable
 import pandas
 import omero
 import omero.gateway
+from omero.rtypes import unwrap
 from tqdm.auto import tqdm
 
 from omero2pandas.connect import OMEROConnection
+from omero2pandas.io_tools import get_annotation_reader, infer_compression
 from omero2pandas.upload import create_table
 if find_spec("tiledb"):
     from omero2pandas.remote import create_remote_table
@@ -287,7 +289,6 @@ def download_table(target_path, file_id=None, annotation_id=None,
     returned. Cannot be used with the 'rows' parameter.
     :param variables: Dictionary containing variables to map onto the query
     string.
-    :return: pandas.DataFrame object containing requested data
     """
     if rows is not None and query is not None:
         raise ValueError("Running a query supersedes the rows argument. "
@@ -359,6 +360,138 @@ def download_table(target_path, file_id=None, annotation_id=None,
     LOGGER.info(f"Download complete, saved to {target_path}")
 
 
+def read_csv(file_id=None, annotation_id=None, column_names=None,
+             chunk_size=1048576, omero_connector=None, server=None, port=4064,
+             username=None, password=None, **kwargs):
+    """
+    Read a csv or csv.gz file stored as an OMERO OriginalFile/FileAnnotation
+    into a pandas dataframe.
+    Supply either a file or annotation ID.
+    Convenience method for scenarios where data was uploaded as a raw CSV
+    rather than an OMERO.tables object.
+    Additional keyword arguments will be forwarded to the pandas.read_csv
+    method
+    :param file_id: ID of the OriginalFile to load
+    :param annotation_id: ID of the FileAnnotation to load
+    :param column_names: Optional list of column names to return
+    :param omero_connector: OMERO.client object which is already connected
+    to a server. Supersedes any other connection details.
+    :param server: Address of the server
+    :param port: Port the server runs on (default 4064)
+    :param username: Username for server login
+    :param password: Password for server login
+    :param chunk_size: BYTES to download in a single call (default 1024^2)
+    :return: pandas.DataFrame
+    """
+    object_id, object_type = _validate_requested_object(
+        file_id=file_id, annotation_id=annotation_id)
+    if "usecols" in kwargs:
+        raise ValueError(
+            "Provide 'column_names' for column selection, not 'usecols'")
+
+    with _get_connection(server=server, username=username, password=password,
+                         port=port, client=omero_connector) as connector:
+        conn = connector.get_gateway()
+        orig_file = _get_original_file(conn, object_type, object_id)
+        file_id = unwrap(orig_file.id)
+        file_name = unwrap(orig_file.name)
+        file_mimetype = unwrap(orig_file.mimetype)
+        if "compression" not in kwargs:
+            compression = infer_compression(file_mimetype, file_name)
+
+        # Check that the OriginalFile has the expected mimetype
+
+        LOGGER.info(f"Reading file {file_id} of "
+                    f"mimetype '{file_mimetype}' from OMERO")
+        bar_fmt = '{desc}: {percentage:3.0f}%|{bar}| ' \
+                  '{n_fmt}/{total_fmt}, {elapsed} {postfix}'
+        chunk_iter = tqdm(desc="Reading CSV from OMERO",
+                          bar_format=bar_fmt, unit_scale=True)
+        with get_annotation_reader(conn, file_id,
+                                   chunk_size, reporter=chunk_iter) as reader:
+            df = pandas.read_csv(reader,
+                                 compression=compression,
+                                 usecols=column_names, **kwargs)
+        chunk_iter.close()
+    return df
+
+
+def download_csv(target_path, file_id=None, annotation_id=None,
+                 chunk_size=1048576, check_type=True, omero_connector=None,
+                 server=None, port=4064, username=None, password=None):
+    """
+    Downloads a CSV file stored as a csv or csv.gz file rather than an
+    OMERO.table.
+    Supply either a file or annotation ID.
+    For the connection, supply either an active client object or server
+    credentials (not both!). If neither are provided the program will search
+    for an OMERO user token on the system.
+    :param target_path: Path to the csv file where data will be saved.
+    :param file_id: ID of an OriginalFile object
+    :param annotation_id: ID of a FileAnnotation object
+    :param omero_connector: OMERO.client object which is already connected
+    to a server. Supersedes any other connection details.
+    :param server: Address of the server
+    :param port: Port the server runs on (default 4064)
+    :param username: Username for server login
+    :param password: Password for server login
+    :param chunk_size: BYTES to download in a single call (default 1024^2)
+    :param check_type: [Boolean] Whether to check that the target file is
+    actually a CSV
+    """
+    object_id, object_type = _validate_requested_object(
+        file_id=file_id, annotation_id=annotation_id)
+
+    assert not os.path.exists(target_path), \
+        f"Target file {target_path} already exists"
+
+    with _get_connection(server=server, username=username, password=password,
+                         port=port, client=omero_connector) as connector:
+        conn = connector.get_gateway()
+
+        orig_file = _get_original_file(conn, object_type, object_id)
+        file_id = unwrap(orig_file.id)
+        file_name = unwrap(orig_file.name)
+        file_mimetype = unwrap(orig_file.mimetype)
+        if check_type:
+            infer_compression(file_mimetype, file_name)
+
+        LOGGER.info(f"Downloading file {file_id} of "
+                    f"mimetype '{file_mimetype}' from OMERO")
+        bar_fmt = '{desc}: {percentage:3.0f}%|{bar}| ' \
+                  '{n_fmt}/{total_fmt}B, {elapsed} {postfix}'
+        chunk_iter = tqdm(desc="Downloading CSV from OMERO",
+                          bar_format=bar_fmt, unit_scale=True)
+        with get_annotation_reader(conn, file_id,
+                                   chunk_size, reporter=chunk_iter) as reader:
+            with open(target_path, "wb") as filehandle:
+                for chunk in reader:
+                    filehandle.write(chunk)
+        chunk_iter.close()
+    LOGGER.info(f"Download complete, saved to {target_path}")
+
+
+def _get_original_file(conn, object_type, object_id):
+    if object_type not in ("FileAnnotation", "OriginalFile"):
+        raise ValueError(f"Unsupported type '{object_type}'")
+    # Fetch the object from OMERO
+    if object_type == "FileAnnotation":
+        params = omero.sys.ParametersI()
+        params.addId(object_id)
+        target = conn.getQueryService().findByQuery(
+            "SELECT fa.file from FileAnnotation fa where fa.id = :id",
+            params, {"omero.group": "-1"})
+    elif object_type == "OriginalFile":
+        target = conn.getQueryService().find(object_type, object_id,
+                                             {"omero.group": "-1"})
+    else:
+        raise NotImplementedError(
+            f"OMERO object of type {object_type} is not supported")
+    assert target is not None, f"{object_type} with ID" \
+                               f" {object_id} not found"
+    return target
+
+
 def _get_table(conn, object_type, object_id):
     """
     Loads an OMERO.table remotely
@@ -369,30 +502,16 @@ def _get_table(conn, object_type, object_id):
     by both a FileAnnotation and OriginalFile ID
     :return: Activated OMERO.table wrapper
     """
-    orig_group = conn.SERVICE_OPTS.getOmeroGroup()
-    conn.SERVICE_OPTS.setOmeroGroup('-1')
-    # Fetch the object from OMERO
-    target = conn.getObject(object_type, object_id)
-    assert target is not None, f"{object_type} with ID" \
-                               f" {object_id} not found"
-    # Get the file object containing the table.
-    if isinstance(target, omero.gateway.FileAnnotationWrapper):
-        orig_file = target.file
-    elif isinstance(target, omero.gateway.OriginalFileWrapper):
-        orig_file = target._obj
-    else:
-        raise NotImplementedError(
-            f"OMERO object of type {type(target)} is not supported")
+    orig_file = _get_original_file(conn, object_type, object_id)
 
     # Check that the OriginalFile has the expected mimetype
-    if orig_file.mimetype is None or orig_file.mimetype.val != "OMERO.tables":
+    if unwrap(orig_file.mimetype) != "OMERO.tables":
         raise ValueError(
-            f"File {orig_file.id.val} is not a valid OMERO.tables")
+            f"File {unwrap(orig_file.id)} is not a valid OMERO.tables object")
 
     # Load the table
     resources = conn.c.sf.sharedResources()
-    data_table = resources.openTable(orig_file, conn.SERVICE_OPTS)
-    conn.SERVICE_OPTS.setOmeroGroup(orig_group)
+    data_table = resources.openTable(orig_file, {"omero.group": "-1"})
     return data_table
 
 

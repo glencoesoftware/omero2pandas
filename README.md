@@ -113,6 +113,42 @@ my_dataframe.head()
 
 Returned dataframes also come with a pandas index column, representing the original row numbers from the OMERO.table.
 
+
+### Non-OMERO.tables Tables
+Sometimes users attach a CSV file as a FileAnnotation in CSV format rather than 
+uploading as an OMERO.tables object. omero2pandas can still try to read these 
+using dedicated methods:
+
+```python
+import omero2pandas
+my_dataframe = omero2pandas.read_csv(file_id=101, 
+                                     column_names=['object', 'intensity'])
+my_dataframe.head()
+# Returns dataframe with selected columns
+```
+
+Note that this interface supports less features than using full OMERO.tables, 
+so queries and row selection are unavailable. However, it is also possible to 
+load gzip-compressed CSV files (.csv.gz) directly with these methods.
+
+You can also directly download the OriginalFile as follows:
+
+```python
+import omero2pandas
+omero2pandas.download_csv("/path/to/output.csv", file_id=201)
+```
+
+In both these cases the `chunk_size` parameter controls the number of **bytes** 
+loaded in each server call rather than the row count. Take care when specifying 
+this parameter as using small values (e.g. 10) will make the download very slow.
+
+By default the downloader will only accept csv/csv.gz files, but it can 
+technically be used with most OriginalFile objects. Supply the `check_type=False`
+argument to bypass that restriction. 
+
+N.b. OMERO.tables cannot be downloaded with this method, use `omero2pandas.download_table` instead.
+
+
 ## Writing data
 
 Pandas dataframes can also be written back as new OMERO.tables.
