@@ -349,7 +349,7 @@ parameter to declare where OMERO should find the resulting TileDB file.
 For example, if registering from a Windows machine with a network drive to an OMERO server on Linux:
 ```python
 omero2pandas.upload_table(
-    df, "My Custom Table",
+    df, "My Custom Table", links=[("Image", 101)],
     local_path="J:\\data\\tables\\my_omero_table.tiledb",
     remote_path="/network_data/tables/my_omero_table.tiledb"
 )
