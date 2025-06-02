@@ -382,10 +382,14 @@ secret_token = create_tiledb(df, "/path/to/my.tiledb")
 # At this point you could copy the tiledb file to the server
 
 # Register the table remotely
+omero_connector = omero2pandas.connect_to_omero(**login_params)
 ann_id = register_table(omero_connector, "/server/path/to/my.tiledb", 
                         table_name="My table", links=[("Image", 101)], 
                         token=secret_token)
 ```
+
+Note that the `register_table` function requires an `omero2pandas.connect.OMEROConnection` object,
+you can generate one from an existing client using `omero2pandas.connect_to_omero(client=client)`
 
 While it is possible to manually create and register tables without a `SecretToken`, 
 this is strongly discouraged as other users could potentially register and access 
