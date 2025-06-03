@@ -18,7 +18,7 @@ import omero.gateway
 from omero.rtypes import unwrap
 from tqdm.auto import tqdm
 
-from omero2pandas.connect import OMEROConnection
+from omero2pandas.connect import get_connection
 from omero2pandas.io_tools import get_annotation_reader, infer_compression
 from omero2pandas.upload import create_table
 if find_spec("tiledb"):
@@ -50,8 +50,8 @@ def get_table_size(file_id=None, annotation_id=None, omero_connector=None,
     object_id, object_type = _validate_requested_object(
         file_id=file_id, annotation_id=annotation_id)
 
-    with _get_connection(server=server, username=username, password=password,
-                         port=port, client=omero_connector) as connector:
+    with get_connection(server=server, username=username, password=password,
+                        port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
         data_table = _get_table(conn, object_type, object_id)
         # Fetch columns
@@ -80,8 +80,8 @@ def get_table_columns(file_id=None, annotation_id=None,
     object_id, object_type = _validate_requested_object(
         file_id=file_id, annotation_id=annotation_id)
 
-    with _get_connection(server=server, username=username, password=password,
-                         port=port, client=omero_connector) as connector:
+    with get_connection(server=server, username=username, password=password,
+                        port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
 
         data_table = _get_table(conn, object_type, object_id)
@@ -126,8 +126,8 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
     object_id, object_type = _validate_requested_object(
         file_id=file_id, annotation_id=annotation_id)
 
-    with _get_connection(server=server, username=username, password=password,
-                         port=port, client=omero_connector) as connector:
+    with get_connection(server=server, username=username, password=password,
+                        port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
 
         data_table = _get_table(conn, object_type, object_id)
@@ -239,8 +239,8 @@ def upload_table(source, table_name, parent_id=None, parent_type='Image',
     elif not isinstance(links, Iterable):
         raise ValueError(f"Links should be an iterable list of "
                          f"type/id pairs, not {type(links)}")
-    with _get_connection(server=server, username=username, password=password,
-                         port=port, client=omero_connector) as connector:
+    with get_connection(server=server, username=username, password=password,
+                        port=port, client=omero_connector) as connector:
         if local_path or remote_path:
             if not create_remote_table:
                 raise ValueError("Remote table support is not installed")
@@ -299,8 +299,8 @@ def download_table(target_path, file_id=None, annotation_id=None,
     assert not os.path.exists(target_path), \
         f"Target file {target_path} already exists"
 
-    with _get_connection(server=server, username=username, password=password,
-                         port=port, client=omero_connector) as connector:
+    with get_connection(server=server, username=username, password=password,
+                        port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
 
         data_table = _get_table(conn, object_type, object_id)
@@ -389,8 +389,8 @@ def read_csv(file_id=None, annotation_id=None, column_names=None,
         raise ValueError(
             "Provide 'column_names' for column selection, not 'usecols'")
 
-    with _get_connection(server=server, username=username, password=password,
-                         port=port, client=omero_connector) as connector:
+    with get_connection(server=server, username=username, password=password,
+                        port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
         orig_file = _get_original_file(conn, object_type, object_id)
         file_id = unwrap(orig_file.id)
@@ -445,8 +445,8 @@ def download_csv(target_path, file_id=None, annotation_id=None,
     assert not os.path.exists(target_path), \
         f"Target file {target_path} already exists"
 
-    with _get_connection(server=server, username=username, password=password,
-                         port=port, client=omero_connector) as connector:
+    with get_connection(server=server, username=username, password=password,
+                        port=port, client=omero_connector) as connector:
         conn = connector.get_gateway()
 
         orig_file = _get_original_file(conn, object_type, object_id)
@@ -556,16 +556,9 @@ def connect_to_omero(client=None, server=None, port=4064,
     :return: OMEROConnection object wrapping a client and Blitz Gateway object,
     with automatic session management and cleanup.
     """
-    connector = OMEROConnection(server=server, port=port,
-                                session_key=session_key, username=username,
-                                password=password, client=client,
-                                allow_token=allow_token)
+    connector = get_connection(server=server, port=port,
+                               session_key=session_key, username=username,
+                               password=password, client=client,
+                               allow_token=allow_token)
     connector.connect(interactive=interactive, keep_alive=keep_alive)
     return connector
-
-
-def _get_connection(client=None, **kwargs):
-    """Create an OMEROConnection instance or use existing if supplied"""
-    if client is not None and isinstance(client, OMEROConnection):
-        return client
-    return OMEROConnection(client=client, **kwargs)
