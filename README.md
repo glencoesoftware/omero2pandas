@@ -4,7 +4,7 @@ A convenience package to download data from OMERO.tables into Pandas dataframes.
 
 # Installation
 
-omero2pandas can be installed with pip on Python 3.6+:
+omero2pandas can be installed with pip on Python 3.9+:
 ```
 pip install omero2pandas
 ```
