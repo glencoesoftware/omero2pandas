@@ -249,8 +249,8 @@ When a client is active within the `OMEROConnection` object, calls to this wrapp
 OMEROConnection objects can also be used as a context manager:
 ```python
 import omero2pandas
-with omero2pandas.OMEROConnection(server='my.server', port=4064, 
-                                  username='test.user',) as connector:
+with omero2pandas.connect_to_omero(server='my.server', port=4064, 
+                                   username='test.user',) as connector:
     blitz = connector.get_gateway()
     image = blitz.getObject('Image', id=100)
     # Continue using the standard OMERO API.

@@ -13,6 +13,7 @@ import logging
 import weakref
 
 import omero
+from omero.clients import BaseClient
 from omero.gateway import BlitzGateway
 
 LOGGER = logging.getLogger(__name__)
@@ -37,20 +38,32 @@ class OMEROConnection:
         :param allow_token: True/False Search for omero_user_token before
         trying to use credentials. Default True.
         """
-        self.client = client
-        self.external_client = client is not None
-        self.session = None
+        self.client = None
         self.gateway = None
+        self.external_client = client is not None
+        if isinstance(client, OMEROConnection):
+            raise TypeError("Client for creating an OMEROConnection cannot be"
+                            " an existing existing OMEROConnection")
+        elif isinstance(client, BlitzGateway):
+            # Unwrap BlitzGateway
+            self.gateway = client
+            self.client = client.c
+        elif isinstance(client, BaseClient):
+            # Use existing client
+            self.client = client
+        elif client:
+            raise TypeError(f"Invalid client type {type(client)}")
+        self.session = None
         self.temp_session = False
-        if client is not None:
+        if self.client is not None:
             # Infer details from client, fallback to params
-            self.server = client.getProperty("omero.host")
+            self.server = self.client.getProperty("omero.host")
             if server and self.server != server:
                 LOGGER.warning(f"Host already set to '{self.server}' in "
                                f"provided client, param will be ignored")
             elif server and not self.server:
                 self.server = server
-            self.port = client.getProperty("omero.port") or port
+            self.port = self.client.getProperty("omero.port") or port
             if not self.server:
                 LOGGER.error("Unknown host for provided client")
         else:
@@ -94,6 +107,7 @@ class OMEROConnection:
             LOGGER.debug("Closing OMERO session")
             self.client.closeSession()
             self.client = None
+            self.gateway = None
             self.session = None
 
     def __del__(self):
@@ -145,7 +159,6 @@ class OMEROConnection:
             try:
                 self.session = self.client.createSession(
                     username=self.username, password=self.password)
-                self.session.detachOnDestroy()
             except Exception as e:
                 print(f"Failed to create session: {e}")
                 self.client = None
@@ -303,6 +316,13 @@ def detect_jupyter():
         LOGGER.debug("Detected Jupyter environment")
         return True
     return False
+
+
+def get_connection(client=None, **kwargs):
+    """Create an OMEROConnection instance or use existing if supplied"""
+    if client is not None and isinstance(client, OMEROConnection):
+        return client
+    return OMEROConnection(client=client, **kwargs)
 
 
 def cleanup_sessions():

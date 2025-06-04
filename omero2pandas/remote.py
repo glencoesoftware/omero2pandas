@@ -17,6 +17,8 @@ import tiledb
 from requests import HTTPError
 from tqdm.auto import tqdm
 
+from omero2pandas.connect import get_connection
+
 LOGGER = logging.getLogger(__name__)
 
 OMERO_TILEDB_VERSION = '3'  # Version of the omero table implementation
@@ -97,6 +99,8 @@ def create_tiledb(source, output_path, chunk_size=1000):
 
 def register_table(connector, remote_path, table_name, links, token,
                    prefix=""):
+    # Check we got the correct connector type
+    connector = get_connection(client=connector)
     if not connector.server:
         raise ValueError("Unknown server? This should never happen!")
     server = f"https://{connector.server}"
