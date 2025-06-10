@@ -359,7 +359,7 @@ Effectively, `local_path` is where the current machine should write the data to,
 is where that file will be from the OMERO server's point of view. No remote path 
 implies that both machines will see the file at the local path.
 
-Note that when a table is registered remotely it is not part of the Managed Repository 
+Note that when a table is registered remotely it is not stored within the binary repository 
 used to store OMERO data. This means that it becomes the **user's responsibility** to 
 update the table object on the OMERO server if the file is moved/deleted.
 
