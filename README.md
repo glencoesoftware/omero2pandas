@@ -315,7 +315,7 @@ imports (otherwise table data is stored in the ManagedRepository).
 
 This is a two-step process:
 1) Convert the dataframe into a TileDB file
-2) Register the remote converted table with OMERO
+2) Register the remote converted table with OMERO Plus
 
 If you don't know what table backend your OMERO Plus server is using, you 
 probably don't have this feature available. If you have access to the server 
@@ -356,12 +356,12 @@ omero2pandas.upload_table(
 ```
 
 Effectively, `local_path` is where the current machine should write the data to, `remote_path` 
-is where that file will be from the OMERO server's point of view. No remote path 
+is where that file will be from the OMERO Plus server's point of view. No remote path 
 implies that both machines will see the file at the local path.
 
 Note that when a table is registered remotely it is not stored within the binary repository 
-used to store OMERO data. This means that it becomes the **user's responsibility** to 
-update the table object on the OMERO server if the file is moved/deleted.
+used to store OMERO Plus data. This means that it becomes the **user's responsibility** to 
+update the table object on the OMERO Plus server if the file is moved/deleted.
 
 #### Running remote registration steps individually
 
