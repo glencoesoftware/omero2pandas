@@ -311,7 +311,7 @@ replacing tricky elements with a variable may help.
 
 For **OMERO Plus** installations which support TileDB as the OMERO.tables backend 
 it is possible to register tables in-place in a similar manner to in-place image 
-imports (otherwise table data is stored in the ManagedRepository).
+imports (otherwise table data is stored in the OMERO Plus server's binary repository).
 
 This is a two-step process:
 1) Convert the dataframe into a TileDB file
