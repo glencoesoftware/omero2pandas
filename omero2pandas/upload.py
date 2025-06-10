@@ -227,7 +227,7 @@ def create_table(source, table_name, links, conn, chunk_size):
         orig_file = table.getOriginalFile()
         # Create FileAnnotation from OriginalFile
         annotation = omero.model.FileAnnotationI()
-        annotation.file = orig_file
+        annotation.file = omero.model.OriginalFileI(orig_file.id.val, False)
         annotation_obj = conn.getUpdateService().saveAndReturnObject(
             annotation, {"omero.group": str(working_group)})
         LOGGER.info(f"Generated FileAnnotation {annotation_obj.id.val} "
