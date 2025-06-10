@@ -339,14 +339,14 @@ db_path = omero2pandas.upload_table("/path/to/my_data.csv", "Name for table",
 # Returns the path to the created tiledb file
 ```
 
-This will convert the table into a TileDB database which will be written to `local_path`, then attempt to 
-register this to OMERO in-place. For this to work the local_path needs to be visible on the server machine 
+This will convert the table into a TileDB file written to `local_path`, then attempt to 
+register this table to OMERO Plus in-place. For this to work the `local_path` needs to be readable via the server machine 
 as well (e.g. a network drive).
 
 If shared storage is mounted differently from the server's point of view, you can also supply the `remote_path` 
-parameter to declare where OMERO should find the resulting TileDB file.
+parameter to declare where OMERO Plus should find the resulting TileDB file.
 
-For example, if registering from a Windows machine with a network drive to an OMERO server on Linux:
+For example, if registering from a Windows machine with a network drive to an OMERO Plus server on Linux:
 ```python
 omero2pandas.upload_table(
     df, "My Custom Table", links=[("Image", 101)],
