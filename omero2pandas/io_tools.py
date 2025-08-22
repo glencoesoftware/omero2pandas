@@ -144,6 +144,6 @@ def infer_compression(mimetype, name):
     mimetype = mimetype.lower()
     if mimetype == "application/x-gzip":
         return "gzip"
-    elif mimetype == "text/csv":
+    elif mimetype == "text/csv" or mimetype == "omero.tables":
         return None
     raise ValueError(f"Unsupported mimetype: {mimetype}")
