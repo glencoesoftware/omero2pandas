@@ -30,7 +30,7 @@ REGISTER_ENDPOINT = "/omero_plus/api/v0/table"
 
 def create_remote_table(source, table_name, local_path, remote_path=None,
                         links=(), chunk_size=1000, connector=None,
-                        prefix=""):
+                        prefix="", cleanup=False):
     LOGGER.info("Registering remote table")
     # Default filters from tiledb.from_pandas()
     write_path = Path(local_path)
@@ -45,7 +45,8 @@ def create_remote_table(source, table_name, local_path, remote_path=None,
         if remote_path.suffix != '.tiledb':
             remote_path = remote_path / write_path.name
     LOGGER.debug(f"Remote path would be {str(remote_path)}")
-    token = create_tiledb(source, write_path, chunk_size=chunk_size)
+    token = create_tiledb(source, write_path, chunk_size=chunk_size,
+                          cleanup=cleanup)
     ann_id = register_table(connector, remote_path, table_name, links, token,
                             prefix=prefix)
     return ann_id
