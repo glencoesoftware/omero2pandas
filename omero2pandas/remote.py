@@ -51,7 +51,7 @@ def create_remote_table(source, table_name, local_path, remote_path=None,
     return ann_id
 
 
-def create_tiledb(source, output_path, chunk_size=10000, cleanup=True):
+def create_tiledb(source, output_path, chunk_size=10000, cleanup=False):
     """
     :param source: Input file path or pandas dataframe
     :param output_path: Local path to write tiledb to
