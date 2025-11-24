@@ -85,7 +85,7 @@ def create_tiledb(source, output_path, chunk_size=10000, cleanup=False):
             tiledb.from_pandas(output_path, source, sparse=True,
                                full_domain=True, dim_filters=filters,
                                attr_filters=None, chunksize=chunk_size,
-                               allow_duplciates=False)
+                               allow_duplicates=False)
         if cleanup:
             bar.set_description("Optimising TileDB file...")
             tiledb.consolidate(output_path)
