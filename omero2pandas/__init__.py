@@ -171,7 +171,8 @@ def read_table(file_id=None, annotation_id=None, column_names=(), rows=None,
         # Download data
         for start in range(0, num_rows, chunk_size):
             if rows is None:
-                data = data_table.read(target_cols, start, start + chunk_size)
+                end = min(start + chunk_size, num_rows)
+                data = data_table.read(target_cols, start, end)
             else:
                 data = data_table.slice(target_cols,
                                         rows[start:start + chunk_size])
@@ -344,7 +345,8 @@ def download_table(target_path, file_id=None, annotation_id=None,
         for start in range(0, num_rows, chunk_size):
             data_buffer = {}
             if rows is None:
-                data = data_table.read(target_cols, start, start + chunk_size)
+                end = min(start + chunk_size, num_rows)
+                data = data_table.read(target_cols, start, end)
             else:
                 data = data_table.slice(target_cols,
                                         rows[start:start + chunk_size])
