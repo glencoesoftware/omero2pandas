@@ -11,7 +11,6 @@ import secrets
 from pathlib import Path, PurePosixPath
 import time
 
-import pandas as pd
 import requests
 import tiledb
 from requests import HTTPError
@@ -31,7 +30,7 @@ REGISTER_ENDPOINT = "/omero_plus/api/v0/table"
 
 def create_remote_table(source, table_name, local_path, remote_path=None,
                         links=(), chunk_size=1000, connector=None,
-                        prefix=""):
+                        prefix="", cleanup=False):
     LOGGER.info("Registering remote table")
     # Default filters from tiledb.from_pandas()
     write_path = Path(local_path)
@@ -46,13 +45,22 @@ def create_remote_table(source, table_name, local_path, remote_path=None,
         if remote_path.suffix != '.tiledb':
             remote_path = remote_path / write_path.name
     LOGGER.debug(f"Remote path would be {str(remote_path)}")
-    token = create_tiledb(source, write_path, chunk_size=chunk_size)
+    token = create_tiledb(source, write_path, chunk_size=chunk_size,
+                          cleanup=cleanup)
     ann_id = register_table(connector, remote_path, table_name, links, token,
                             prefix=prefix)
     return ann_id
 
 
-def create_tiledb(source, output_path, chunk_size=1000):
+def create_tiledb(source, output_path, chunk_size=10000, cleanup=False):
+    """
+    :param source: Input file path or pandas dataframe
+    :param output_path: Local path to write tiledb to
+    :param chunk_size: Number of rows to write into the TileDB at once
+    :param cleanup: Whether to consolidate TileDB after writing.
+    Takes time but improves read performance for large tables
+    :return: Security token for the resulting .tiledb file
+    """
     if not isinstance(output_path, Path):
         # Convert strings to proper path objects
         output_path = Path(output_path)
@@ -62,38 +70,36 @@ def create_tiledb(source, output_path, chunk_size=1000):
     # path.as_uri() exists but mangles any spaces in the path!
     output_path = str(output_path)
     # Use a default chunk size if not set
-    chunk_size = chunk_size or 1000
+    chunk_size = chunk_size or 10000
     LOGGER.info("Writing data to TileDB")
-    # Export table
-    if isinstance(source, (str, Path)):
-        data_iterator = pd.read_csv(source, chunksize=chunk_size)
-        total_rows = None
-    else:
-        data_iterator = (source.iloc[i:i + chunk_size]
-                         for i in range(0, len(source), chunk_size))
-        total_rows = len(source)
-    progress_monitor = tqdm(
-        desc="Generating TileDB file...", initial=1, dynamic_ncols=True,
-        total=total_rows,
-        bar_format='{desc}: {percentage:3.0f}%|{bar}| '
-                   '{n_fmt}/{total_fmt} rows, {elapsed} {postfix}')
-    row_idx = 0
-    for chunk in data_iterator:
-        tiledb.from_pandas(output_path, chunk, sparse=True, full_domain=True,
-                           tile=10000, attr_filters=None,
-                           row_start_idx=row_idx, allows_duplicates=False,
-                           mode="append" if row_idx else "ingest")
-        progress_monitor.update(len(chunk))
-        row_idx += len(chunk)
-    progress_monitor.close()
-    LOGGER.debug("Appending metadata to TileDB")
-    # Append omero metadata
-    security_token = secrets.token_urlsafe()
-    with tiledb.open(output_path, mode="w") as array:
-        array.meta['__version'] = OMERO_TILEDB_VERSION
-        array.meta['__initialized'] = time.time()
-        array.meta[SEC_TOKEN_METADATA_KEY] = security_token
-    LOGGER.info("Table saved successfully")
+    filters = tiledb.FilterList([tiledb.ZstdFilter()])
+    fmt = '{desc}: |{bar}| {postfix}'
+    with tqdm(desc="Generating TileDB file...", dynamic_ncols=True,
+              bar_format=fmt) as bar:
+        bar.update(1)
+        if isinstance(source, (str, Path)):
+            tiledb.from_csv(output_path, source, sparse=True, full_domain=True,
+                            tile=10000, dim_filters=filters, attr_filters=None,
+                            chunksize=chunk_size)
+        else:
+            tiledb.from_pandas(output_path, source, sparse=True,
+                               full_domain=True, dim_filters=filters,
+                               attr_filters=None, chunksize=chunk_size,
+                               allows_duplicates=False)
+        if cleanup:
+            bar.set_description("Optimising TileDB file...")
+            tiledb.consolidate(output_path)
+            tiledb.vacuum(output_path)
+        bar.set_description("Writing final metadata...")
+        LOGGER.debug("Appending metadata to TileDB")
+        # Append omero metadata
+        security_token = secrets.token_urlsafe()
+        with tiledb.open(output_path, mode="w") as array:
+            array.meta['__version'] = OMERO_TILEDB_VERSION
+            array.meta['__initialized'] = time.time()
+            array.meta[SEC_TOKEN_METADATA_KEY] = security_token
+        bar.set_description("Complete!")
+        LOGGER.info("Table saved successfully")
     return security_token
 
 
